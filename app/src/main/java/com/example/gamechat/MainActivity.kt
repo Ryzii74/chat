@@ -161,9 +161,6 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
             autoSwitch.setOnCheckedChangeListener { _, isChecked ->
                 UserPreferences.setSolverAutoEnabled(this, isChecked)
             }
-            item.actionView?.setOnClickListener {
-                autoSwitch.isChecked = !autoSwitch.isChecked
-            }
         }
         return super.onPrepareOptionsMenu(menu)
     }
