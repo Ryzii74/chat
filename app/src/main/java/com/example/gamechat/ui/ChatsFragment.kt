@@ -339,13 +339,29 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
     }
 
     private fun showMessageActions(message: ChatMessage) {
-        if (message.id.isNullOrBlank()) return
+        val items = mutableListOf<String>()
+        
+        // Для исходящих сообщений с ошибкой - добавляем повторную отправку
+        if (message.isOutgoing && message.deliveryState == DeliveryState.FAILED) {
+            items.add(getString(R.string.chat_action_retry))
+        }
+        
+        // Для входящих сообщений с ID - добавляем удаление
+        if (!message.id.isNullOrBlank()) {
+            items.add(getString(R.string.chat_action_delete))
+        }
+        
+        if (items.isEmpty()) return
 
-        val items = arrayOf(getString(R.string.chat_action_delete))
         AlertDialog.Builder(requireContext())
-            .setItems(items) { _, which ->
-                if (which == 0) {
-                    deleteMessage(message.id)
+            .setItems(items.toTypedArray()) { _, which ->
+                when {
+                    message.isOutgoing && message.deliveryState == DeliveryState.FAILED && which == 0 -> {
+                        retryFailedMessage(message)
+                    }
+                    !message.id.isNullOrBlank() && items[which] == getString(R.string.chat_action_delete) -> {
+                        deleteMessage(message.id)
+                    }
                 }
             }
             .show()
@@ -368,6 +384,52 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
                         ),
                         Toast.LENGTH_LONG
                     ).show()
+                }
+            }
+        }.start()
+    }
+    
+    private fun retryFailedMessage(failedMessage: ChatMessage) {
+        val messageIndex = messages.indexOf(failedMessage)
+        if (messageIndex == -1) return
+        
+        // Меняем статус на SENDING
+        updateOutgoingMessageStatus(messageIndex, DeliveryState.SENDING)
+        
+        val context = requireContext()
+        val displayName = UserPreferences.getChatNick(context)
+        val serverUrl = UserPreferences.getServerUrl(context)
+        val room = UserPreferences.getChatRoom(context)
+        
+        Thread {
+            val result = if (!failedMessage.imageUrl.isNullOrBlank()) {
+                // Повторная отправка изображения
+                ChatServerClient.sendMessage(
+                    serverBaseUrl = serverUrl,
+                    room = room,
+                    userName = displayName,
+                    message = failedMessage.text,
+                    imageUrl = failedMessage.imageUrl
+                )
+            } else {
+                // Повторная отправка текста
+                ChatServerClient.sendMessage(
+                    serverBaseUrl = serverUrl,
+                    room = room,
+                    userName = displayName,
+                    message = failedMessage.text
+                )
+            }
+            
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                
+                result.onSuccess {
+                    updateOutgoingMessageStatus(messageIndex, DeliveryState.SENT)
+                    Toast.makeText(requireContext(), R.string.message_retry_success, Toast.LENGTH_SHORT).show()
+                }.onFailure {
+                    updateOutgoingMessageStatus(messageIndex, DeliveryState.FAILED)
+                    Toast.makeText(requireContext(), R.string.message_retry_failed, Toast.LENGTH_SHORT).show()
                 }
             }
         }.start()
