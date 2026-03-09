@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.View
-import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.TextView
@@ -235,7 +234,7 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
 
     private fun setupSend(root: View) {
         val input = root.findViewById<EditText>(R.id.messageInput)
-        val sendButton = root.findViewById<Button>(R.id.sendButton)
+        val sendButton = root.findViewById<ImageButton>(R.id.sendButton)
         val attachButton = root.findViewById<ImageButton>(R.id.attachButton)
 
         fun sendCurrentMessage() {
