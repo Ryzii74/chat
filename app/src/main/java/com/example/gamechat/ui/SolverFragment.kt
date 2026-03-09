@@ -40,7 +40,6 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         super.onViewCreated(view, savedInstanceState)
         setupMessages(view)
         setupComposer(view)
-        addSystemMessage(getString(R.string.solver_welcome_message))
     }
 
     override fun onResume() {
