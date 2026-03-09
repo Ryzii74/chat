@@ -1,6 +1,7 @@
 package com.example.gamechat
 
 import android.os.Bundle
+import android.view.Menu
 import android.view.View
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.SwitchCompat
@@ -27,6 +28,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
     private lateinit var toolbar: com.google.android.material.appbar.MaterialToolbar
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private var isUnlocked = false
+    private var currentScreenMenuId: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,7 +39,6 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
         updateAdminMenuVisibility()
-        setupSolverAutoToggle()
 
         drawerToggle = ActionBarDrawerToggle(
             this,
@@ -53,47 +54,51 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
             if (!isUnlocked) return@setNavigationItemSelectedListener false
 
             when (item.itemId) {
-                R.id.solverAutoToggleItem -> {
-                    toggleSolverAuto()
-                    true
-                }
-
                 R.id.encounterAuthFragment -> {
                     openScreen(
                         EncounterAuthFragment.newInstance(showSavedInfo = true, focusPassword = false),
-                        getString(R.string.menu_encounter_auth)
+                        getString(R.string.menu_encounter_auth),
+                        R.id.encounterAuthFragment
                     )
                     true
                 }
 
                 R.id.chatsFragment -> {
-                    openScreen(ChatsFragment(), getString(R.string.menu_chats))
+                    openScreen(ChatsFragment(), getString(R.string.menu_chats), R.id.chatsFragment)
                     true
                 }
 
                 R.id.solverFragment -> {
-                    openScreen(SolverFragment(), getString(R.string.menu_solver))
+                    openScreen(SolverFragment(), getString(R.string.menu_solver), R.id.solverFragment)
                     true
                 }
 
                 R.id.engineFragment -> {
-                    openScreen(EngineFragment(), getString(R.string.menu_engine))
+                    openScreen(EngineFragment(), getString(R.string.menu_engine), R.id.engineFragment)
                     true
                 }
 
                 R.id.engineNativeFragment -> {
-                    openScreen(EngineNativeFragment(), getString(R.string.menu_engine_native))
+                    openScreen(
+                        EngineNativeFragment(),
+                        getString(R.string.menu_engine_native),
+                        R.id.engineNativeFragment
+                    )
                     true
                 }
 
                 R.id.settingsFragment -> {
-                    openScreen(SettingsFragment(), getString(R.string.menu_settings))
+                    openScreen(SettingsFragment(), getString(R.string.menu_settings), R.id.settingsFragment)
                     true
                 }
 
                 R.id.serverSettingsFragment -> {
                     if (UserPreferences.isAdmin(this)) {
-                        openScreen(ServerSettingsFragment(), getString(R.string.menu_server_settings))
+                        openScreen(
+                            ServerSettingsFragment(),
+                            getString(R.string.menu_server_settings),
+                            R.id.serverSettingsFragment
+                        )
                         true
                     } else {
                         false
@@ -103,9 +108,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
                 else -> false
             }.also { handled ->
                 if (handled) {
-                    if (item.itemId != R.id.solverAutoToggleItem) {
-                        item.isChecked = true
-                    }
+                    item.isChecked = true
                     drawerLayout.closeDrawer(GravityCompat.START)
                 }
             }
@@ -137,45 +140,54 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         navView.setCheckedItem(R.id.encounterAuthFragment)
         openScreen(
             EncounterAuthFragment.newInstance(showSavedInfo = true, focusPassword = true),
-            getString(R.string.menu_encounter_auth)
+            getString(R.string.menu_encounter_auth),
+            R.id.encounterAuthFragment
         )
     }
 
-    private fun openScreen(fragment: Fragment, title: String) {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_solver_menu, menu)
+        return true
+    }
+
+    override fun onPrepareOptionsMenu(menu: Menu): Boolean {
+        val item = menu.findItem(R.id.toolbarSolverAutoToggleItem)
+        val autoSwitch = item?.actionView as? SwitchCompat
+        val showSwitch = isUnlocked && currentScreenMenuId == R.id.solverFragment
+        item?.isVisible = showSwitch
+        if (showSwitch && autoSwitch != null) {
+            autoSwitch.setOnCheckedChangeListener(null)
+            autoSwitch.isChecked = UserPreferences.isSolverAutoEnabled(this)
+            autoSwitch.setOnCheckedChangeListener { _, isChecked ->
+                UserPreferences.setSolverAutoEnabled(this, isChecked)
+            }
+            item.actionView?.setOnClickListener {
+                autoSwitch.isChecked = !autoSwitch.isChecked
+            }
+        }
+        return super.onPrepareOptionsMenu(menu)
+    }
+
+    private fun openScreen(fragment: Fragment, title: String, screenMenuId: Int? = null) {
+        currentScreenMenuId = screenMenuId
         supportActionBar?.title = title
         supportFragmentManager
             .beginTransaction()
             .replace(R.id.fragment_container, fragment)
             .commit()
+        invalidateOptionsMenu()
     }
 
     private fun updateAdminMenuVisibility() {
         navView.menu.findItem(R.id.serverSettingsFragment)?.isVisible = UserPreferences.isAdmin(this)
     }
 
-    private fun setupSolverAutoToggle() {
-        val item = navView.menu.findItem(R.id.solverAutoToggleItem) ?: return
-        val autoSwitch = item.actionView as? SwitchCompat ?: return
-        autoSwitch.isChecked = UserPreferences.isSolverAutoEnabled(this)
-        autoSwitch.setOnCheckedChangeListener { _, isChecked ->
-            UserPreferences.setSolverAutoEnabled(this, isChecked)
-        }
-        item.actionView?.setOnClickListener {
-            autoSwitch.isChecked = !autoSwitch.isChecked
-        }
-    }
-
-    private fun toggleSolverAuto() {
-        val item = navView.menu.findItem(R.id.solverAutoToggleItem) ?: return
-        val autoSwitch = item.actionView as? SwitchCompat ?: return
-        autoSwitch.isChecked = !autoSwitch.isChecked
-    }
-
     private fun showEncounterStartScreen() {
         lockAppUi()
         openScreen(
             EncounterAuthFragment.newInstance(showSavedInfo = false, focusPassword = true),
-            getString(R.string.menu_encounter_auth)
+            getString(R.string.menu_encounter_auth),
+            R.id.encounterAuthFragment
         )
     }
 
@@ -189,7 +201,11 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
                     unlockAppUi()
                 } else {
                     lockAppUi()
-                    openScreen(NotAvailableFragment(), getString(R.string.app_not_available_title))
+                    openScreen(
+                        NotAvailableFragment(),
+                        getString(R.string.app_not_available_title),
+                        null
+                    )
                 }
             }
         }.start()
@@ -197,6 +213,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
 
     private fun lockAppUi() {
         isUnlocked = false
+        currentScreenMenuId = null
         toolbar.visibility = View.GONE
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
         navView.visibility = View.GONE
@@ -204,6 +221,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         drawerToggle.syncState()
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
         supportActionBar?.setHomeButtonEnabled(false)
+        invalidateOptionsMenu()
     }
 
     private fun unlockAppUi() {
@@ -219,7 +237,8 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         navView.setCheckedItem(R.id.engineFragment)
         openScreen(
             EngineFragment(),
-            getString(R.string.menu_engine)
+            getString(R.string.menu_engine),
+            R.id.engineFragment
         )
     }
 }
