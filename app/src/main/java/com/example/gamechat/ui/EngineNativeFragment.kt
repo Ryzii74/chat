@@ -143,28 +143,31 @@ class EngineNativeFragment : Fragment(R.layout.fragment_engine_native) {
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(webView, true)
 
-        val host = runCatching { URI(siteBaseUrl).host.orEmpty().trim() }.getOrNull().orEmpty()
+        val siteUri = runCatching { URI(siteBaseUrl) }.getOrNull()
+        val host = siteUri?.host.orEmpty().trim()
+        val scheme = siteUri?.scheme.orEmpty().ifBlank { "https" }
+        val origin = if (host.isNotBlank()) "$scheme://$host" else siteBaseUrl
         val baseUrls = buildList {
             add(siteBaseUrl)
             add(engineUrl)
+            add(origin)
             if (host.isNotBlank()) {
-                add("https://$host/")
-                add("http://$host/")
+                add("$scheme://$host/")
             }
         }.distinct()
 
         // Drop stale auth cookies first to avoid collisions with previous sessions.
         baseUrls.forEach { url ->
-            clearCookie(cookieManager, url, "GUID")
-            clearCookie(cookieManager, url, "stoken")
-            clearCookie(cookieManager, url, "atoken")
+            clearCookie(cookieManager, url, "GUID", host)
+            clearCookie(cookieManager, url, "stoken", host)
+            clearCookie(cookieManager, url, "atoken", host)
         }
 
         val entries = buildList<Pair<String, String>> {
             baseUrls.forEach { url ->
-                addCookie(this, url, "GUID", guid)
-                addCookie(this, url, "stoken", stoken)
-                addCookie(this, url, "atoken", atoken)
+                addCookie(this, url, "GUID", guid, host, scheme)
+                addCookie(this, url, "stoken", stoken, host, scheme)
+                addCookie(this, url, "atoken", atoken, host, scheme)
             }
         }
 
@@ -183,7 +186,8 @@ class EngineNativeFragment : Fragment(R.layout.fragment_engine_native) {
             if (index >= entries.size) {
                 cookieManager.flush()
                 val headers = mutableMapOf(
-                    "User-Agent" to userAgent
+                    "User-Agent" to userAgent,
+                    "Referer" to "$origin/"
                 )
                 if (authCookieHeader.isNotBlank()) {
                     headers["Cookie"] = authCookieHeader
@@ -207,14 +211,33 @@ class EngineNativeFragment : Fragment(R.layout.fragment_engine_native) {
         return parts.joinToString("; ")
     }
 
-    private fun clearCookie(cookieManager: CookieManager, url: String, name: String) {
+    private fun clearCookie(cookieManager: CookieManager, url: String, name: String, host: String) {
         cookieManager.setCookie(url, "$name=; Path=/; Max-Age=0")
+        if (host.isNotBlank()) {
+            cookieManager.setCookie(url, "$name=; Domain=$host; Path=/; Max-Age=0")
+            cookieManager.setCookie(url, "$name=; Domain=.$host; Path=/; Max-Age=0")
+        }
     }
 
-    private fun addCookie(target: MutableList<Pair<String, String>>, url: String, name: String, value: String?) {
+    private fun addCookie(
+        target: MutableList<Pair<String, String>>,
+        url: String,
+        name: String,
+        value: String?,
+        host: String,
+        scheme: String
+    ) {
         val safe = value?.trim().orEmpty()
         if (safe.isBlank()) return
-        target.add(url to "$name=$safe; Path=/; SameSite=None; Secure")
+        target.add(url to "$name=$safe; Path=/")
+        if (host.isNotBlank()) {
+            target.add(url to "$name=$safe; Domain=$host; Path=/")
+            target.add(url to "$name=$safe; Domain=.$host; Path=/")
+            if (scheme.equals("https", ignoreCase = true)) {
+                target.add(url to "$name=$safe; Domain=$host; Path=/; Secure")
+                target.add(url to "$name=$safe; Domain=.$host; Path=/; Secure")
+            }
+        }
     }
 
     private fun showError(errorText: TextView, message: String) {
