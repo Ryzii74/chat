@@ -179,6 +179,10 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         navView.menu.findItem(R.id.serverSettingsFragment)?.isVisible = UserPreferences.isAdmin(this)
     }
 
+    fun refreshAdminStateUi() {
+        updateAdminMenuVisibility()
+    }
+
     private fun showEncounterStartScreen() {
         lockAppUi()
         openScreen(

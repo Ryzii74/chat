@@ -49,7 +49,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                             adminLoginButton = adminLoginButton,
                             adminLogoutButton = adminLogoutButton
                         )
-                        activity?.recreate()
+                        (activity as? com.example.gamechat.MainActivity)?.refreshAdminStateUi()
                     }.onFailure {
                         Toast.makeText(requireContext(), R.string.admin_login_error, Toast.LENGTH_SHORT).show()
                     }
@@ -74,7 +74,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                         adminLoginButton = adminLoginButton,
                         adminLogoutButton = adminLogoutButton
                     )
-                    activity?.recreate()
+                    (activity as? com.example.gamechat.MainActivity)?.refreshAdminStateUi()
                 }
             }.start()
         }
