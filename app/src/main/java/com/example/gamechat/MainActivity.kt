@@ -68,6 +68,9 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         
         // Создаем каналы уведомлений
         NotificationHelper.createNotificationChannels(this)
+        
+        // Загружаем настройки с сервера при запуске
+        loadServerSettingsOnStartup()
 
         drawerToggle = ActionBarDrawerToggle(
             this,
@@ -411,5 +414,20 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
                 }
             }
         }
+    }
+    
+    private fun loadServerSettingsOnStartup() {
+        // Загружаем настройки с сервера в фоновом режиме
+        Thread {
+            try {
+                val serverUrl = UserPreferences.getServerUrl(this)
+                if (serverUrl.isNotBlank()) {
+                    UserPreferences.syncGameIdFromServer(this)
+                }
+            } catch (e: Exception) {
+                // Игнорируем ошибки при загрузке настроек при старте
+                e.printStackTrace()
+            }
+        }.start()
     }
 }

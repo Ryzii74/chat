@@ -272,4 +272,21 @@ object UserPreferences {
             .putBoolean(KEY_CHAT_NOTIFICATIONS_ENABLED, enabled)
             .apply()
     }
+    
+    fun syncGameIdFromServer(context: Context) {
+        try {
+            val serverUrl = getServerUrl(context)
+            if (serverUrl.isBlank()) return
+            
+            val result = ChatServerClient.getServerConfig(serverUrl)
+            result.onSuccess { config ->
+                val gameId = config.gameId?.trim().orEmpty()
+                if (gameId.isNotEmpty()) {
+                    setEncounterGameId(context, gameId)
+                }
+            }
+        } catch (e: Exception) {
+            // Тихо игнорируем ошибки синхронизации
+        }
+    }
 }
