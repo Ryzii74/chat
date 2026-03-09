@@ -44,7 +44,13 @@ object EncounterApiClient {
     data class EngineHint(
         val title: String,
         val text: String?,
-        val remainingSeconds: Int?
+        val remainingSeconds: Int?,
+        val isPenalty: Boolean = false,
+        val penalty: Int? = null,
+        val penaltyComment: String? = null,
+        val penaltyHelpState: Int? = null,
+        val helpId: Int? = null,
+        val number: Int? = null
     )
 
     data class EngineBonus(
@@ -458,33 +464,79 @@ object EncounterApiClient {
             ?: level?.optJSONArray("Hints")
             ?: json.optJSONArray("Helps")
             ?: json.optJSONArray("Hints")
+        val penaltyHintsArray = level?.optJSONArray("PenaltyHelps")
+            ?: json.optJSONArray("PenaltyHelps")
+            
         val hints = buildList {
-            if (hintsArray == null) return@buildList
-            for (i in 0 until hintsArray.length()) {
-                val hintObj = hintsArray.optJSONObject(i) ?: continue
-                val title = firstNotBlank(
-                    hintObj.optString("Name"),
-                    hintObj.optString("Title"),
-                    "Подсказка ${i + 1}"
-                ) ?: "Подсказка ${i + 1}"
-                val text = firstNotBlank(
-                    hintObj.optString("Text"),
-                    hintObj.optString("HelpText"),
-                    hintObj.optString("Value")
-                )
-                val remainingSeconds = extractNonNegativeInt(
-                    hintObj.opt("RemainSeconds"),
-                    hintObj.opt("SecondsToOpen"),
-                    hintObj.opt("SecondsLeft"),
-                    hintObj.opt("DelaySeconds")
-                )
-                add(
-                    EngineHint(
-                        title = title,
-                        text = text,
-                        remainingSeconds = remainingSeconds
+            // Парсим обычные подсказки
+            if (hintsArray != null) {
+                for (i in 0 until hintsArray.length()) {
+                    val hintObj = hintsArray.optJSONObject(i) ?: continue
+                    val title = firstNotBlank(
+                        hintObj.optString("Name"),
+                        hintObj.optString("Title"),
+                        "Подсказка ${i + 1}"
+                    ) ?: "Подсказка ${i + 1}"
+                    val text = firstNotBlank(
+                        hintObj.optString("Text"),
+                        hintObj.optString("HelpText"),
+                        hintObj.optString("Value")
                     )
-                )
+                    val remainingSeconds = extractNonNegativeInt(
+                        hintObj.opt("RemainSeconds"),
+                        hintObj.opt("SecondsToOpen"),
+                        hintObj.opt("SecondsLeft"),
+                        hintObj.opt("DelaySeconds")
+                    )
+                    add(
+                        EngineHint(
+                            title = title,
+                            text = text,
+                            remainingSeconds = remainingSeconds,
+                            isPenalty = false,
+                            helpId = extractPositiveInt(hintObj.opt("HelpId")),
+                            number = extractPositiveInt(hintObj.opt("Number"))
+                        )
+                    )
+                }
+            }
+            
+            // Парсим штрафные подсказки
+            if (penaltyHintsArray != null) {
+                for (i in 0 until penaltyHintsArray.length()) {
+                    val hintObj = penaltyHintsArray.optJSONObject(i) ?: continue
+                    val title = firstNotBlank(
+                        hintObj.optString("Name"),
+                        hintObj.optString("Title"),
+                        hintObj.optString("PenaltyComment"),
+                        "Штрафная подсказка ${i + 1}"
+                    ) ?: "Штрафная подсказка ${i + 1}"
+                    val text = hintObj.optString("HelpText").takeIf { it.isNotBlank() }
+                    val remainingSeconds = extractNonNegativeInt(
+                        hintObj.opt("RemainSeconds")
+                    )
+                    val penaltyHelpState = extractNonNegativeInt(
+                        hintObj.opt("PenaltyHelpState")
+                    )
+                    val penalty = extractNonNegativeInt(
+                        hintObj.opt("Penalty")
+                    )
+                    val penaltyComment = hintObj.optString("PenaltyComment").takeIf { it.isNotBlank() }
+                    
+                    add(
+                        EngineHint(
+                            title = title,
+                            text = text,
+                            remainingSeconds = remainingSeconds,
+                            isPenalty = true,
+                            penalty = penalty,
+                            penaltyComment = penaltyComment,
+                            penaltyHelpState = penaltyHelpState,
+                            helpId = extractPositiveInt(hintObj.opt("HelpId")),
+                            number = extractPositiveInt(hintObj.opt("Number"))
+                        )
+                    )
+                }
             }
         }
 

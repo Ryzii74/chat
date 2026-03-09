@@ -82,7 +82,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
     private val hintsTimer = object : Runnable {
         override fun run() {
             renderHints(lastState?.hints.orEmpty())
-            if (view != null && hintsBaseSeconds.any { (it ?: 0) > 0 }) {
+            if (view != null && shouldKeepHintsTimerRunning()) {
                 mainHandler.postDelayed(this, 1000)
             }
         }
@@ -441,22 +441,65 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         val elapsed = ((System.currentTimeMillis() - hintsBaseTimestampMillis) / 1000L).toInt().coerceAtLeast(0)
 
         items.forEachIndexed { index, hint ->
-            val base = hintsBaseSeconds.getOrNull(index)
-            val remain = if (base == null) null else (base - elapsed).coerceAtLeast(0)
-
-            val title = if (remain != null && remain > 0) {
-                "${hint.title} (${getString(R.string.engine_hint_timer_template, remain.toString())})"
+            if (hint.isPenalty) {
+                // Штрафная подсказка
+                when (hint.penaltyHelpState) {
+                    0 -> {
+                        // Подсказка еще не открыта - показываем с таймером
+                        val remainSeconds = hint.remainingSeconds ?: 0
+                        val currentRemain = if (remainSeconds > 0) {
+                            (remainSeconds - elapsed).coerceAtLeast(0)
+                        } else remainSeconds
+                        
+                        val title = if (currentRemain > 0) {
+                            "Штрафная подсказка (через ${formatTime(currentRemain)})"
+                        } else {
+                            "Штрафная подсказка (доступна)"
+                        }
+                        container.addView(buildRow(title, isTitle = true))
+                        
+                        val description = hint.penaltyComment ?: "наведите мышь чтобы узнать больше"
+                        val penaltyInfo = if (hint.penalty != null && hint.penalty > 0) {
+                            "(штраф ${formatTime(hint.penalty)})"
+                        } else ""
+                        
+                        container.addView(buildRow("$description $penaltyInfo".trim(), topMarginDp = 2, bottomMarginDp = 10))
+                    }
+                    2 -> {
+                        // Подсказка открыта - показываем текст
+                        container.addView(buildRow("Штрафная подсказка (открыта)", isTitle = true))
+                        
+                        val text = when {
+                            !hint.text.isNullOrBlank() -> hint.text
+                            else -> getString(R.string.engine_empty_hint_text)
+                        }
+                        container.addView(buildRow(toRichText(text), topMarginDp = 2, bottomMarginDp = 10))
+                    }
+                    else -> {
+                        // Неизвестное состояние - показываем как обычная подсказка
+                        container.addView(buildRow("Подсказка", isTitle = true))
+                        container.addView(buildRow("Неопределенное состояние", topMarginDp = 2, bottomMarginDp = 10))
+                    }
+                }
             } else {
-                hint.title
-            }
-            container.addView(buildRow(title, isTitle = true))
+                // Обычная подсказка - обработка как раньше
+                val base = hintsBaseSeconds.getOrNull(index)
+                val remain = if (base == null) null else (base - elapsed).coerceAtLeast(0)
 
-            val text = when {
-                remain != null && remain > 0 -> getString(R.string.engine_hint_locked)
-                !hint.text.isNullOrBlank() -> hint.text
-                else -> getString(R.string.engine_empty_hint_text)
+                val title = if (remain != null && remain > 0) {
+                    "${hint.title} (${getString(R.string.engine_hint_timer_template, remain.toString())})"
+                } else {
+                    hint.title
+                }
+                container.addView(buildRow(title, isTitle = true))
+
+                val text = when {
+                    remain != null && remain > 0 -> getString(R.string.engine_hint_locked)
+                    !hint.text.isNullOrBlank() -> hint.text
+                    else -> getString(R.string.engine_empty_hint_text)
+                }
+                container.addView(buildRow(toRichText(text), topMarginDp = 2, bottomMarginDp = 10))
             }
-            container.addView(buildRow(toRichText(text), topMarginDp = 2, bottomMarginDp = 10))
         }
     }
 
@@ -923,6 +966,44 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         }
         
         autoTransitionTimerView.text = timeText
+    }
+    
+    private fun shouldKeepHintsTimerRunning(): Boolean {
+        val hints = lastState?.hints.orEmpty()
+        
+        // Проверяем обычные подсказки с базовым временем
+        if (hintsBaseSeconds.any { (it ?: 0) > 0 }) {
+            return true
+        }
+        
+        // Проверяем штрафные подсказки с неоткрытым состоянием
+        return hints.any { hint ->
+            hint.isPenalty && 
+            hint.penaltyHelpState == 0 && 
+            (hint.remainingSeconds ?: 0) > 0
+        }
+    }
+    
+    private fun formatTime(seconds: Int): String {
+        if (seconds <= 0) return "0 сек"
+        
+        val hours = seconds / 3600
+        val minutes = (seconds % 3600) / 60
+        val secs = seconds % 60
+        
+        return buildString {
+            if (hours > 0) {
+                append("$hours ч")
+                if (minutes > 0 || secs > 0) append(" ")
+            }
+            if (minutes > 0) {
+                append("$minutes мин")
+                if (secs > 0) append(" ")
+            }
+            if (secs > 0 || (hours == 0 && minutes == 0)) {
+                append("$secs сек")
+            }
+        }
     }
     
     private fun extractAnswersFromSolverText(text: String): String {
