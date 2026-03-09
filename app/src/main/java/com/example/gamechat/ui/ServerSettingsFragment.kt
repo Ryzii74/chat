@@ -104,7 +104,7 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
         fun renderRoomsWithHistory() {
             val adapter = ArrayAdapter(
                 requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
+                R.layout.item_room_dropdown,
                 roomsWithHistory
             )
             clearRoomSelectorInput.setAdapter(adapter)
