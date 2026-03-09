@@ -479,6 +479,39 @@ object ChatServerClient {
         }
     }
 
+    // Установка gameId на сервере (только для админов)
+    fun setGameId(serverBaseUrl: String, gameId: String, adminToken: String): Result<String> {
+        return runCatching {
+            val connection = URL("$serverBaseUrl/admin/set-game-id").openConnection() as HttpURLConnection
+            connection.apply {
+                requestMethod = "POST"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("X-Admin-Token", adminToken)
+                doOutput = true
+            }
+
+            val payload = JSONObject().apply {
+                put("gameId", gameId.trim())
+            }.toString()
+
+            connection.outputStream.use { os ->
+                os.write(payload.toByteArray())
+            }
+
+            val statusCode = connection.responseCode
+            val responseBody = readResponse(connection)
+            connection.disconnect()
+
+            if (statusCode !in 200..299) {
+                throw IllegalStateException("HTTP $statusCode: $responseBody")
+            }
+
+            "Game ID updated successfully"
+        }
+    }
+
     data class ServerConfig(
         val gameId: String?,
         val serverName: String?

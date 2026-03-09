@@ -105,5 +105,21 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp" />
         </LinearLayout>
+        
+        <!-- ID игры Encounter -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/gameIdLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:hint="@string/settings_enc_game_id_hint">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/gameIdInput"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:enabled="false"
+                android:maxLines="1" />
+        </com.google.android.material.textfield.TextInputLayout>
     </LinearLayout>
 </ScrollView>

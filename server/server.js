@@ -10,6 +10,7 @@ const PORT = Number(process.env.PORT || 8080);
 const MAX_MESSAGES = Number(process.env.MAX_MESSAGES || 200);
 const DEFAULT_ROOM = process.env.DEFAULT_ROOM || "general";
 const ADMIN_PIN = process.env.ADMIN_PIN || "1234";
+let GAME_ID = process.env.GAME_ID || "";
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = process.env.DATA_FILE || path.join(DATA_DIR, "chat-state.json");
 const MEDIA_DIR = process.env.MEDIA_DIR || path.join(DATA_DIR, "media");
@@ -235,6 +236,7 @@ const server = http.createServer(async (req, res) => {
         "/messages/:id",
         "/media",
         "/ws",
+        "/api/config",
         "/app-access/check",
         "/engine/level-changed",
         "/admin/login",
@@ -243,6 +245,7 @@ const server = http.createServer(async (req, res) => {
         "/admin/clear-room",
         "/admin/allowed-nicks",
         "/admin/rooms-with-history",
+        "/admin/set-game-id",
       ],
       activeRoom,
     });
@@ -302,6 +305,19 @@ const server = http.createServer(async (req, res) => {
       allowedNicks.length === 0 ||
       (nick && allowedNicks.includes(nick));
     sendJson(res, 200, { allowed, nick });
+    return;
+  }
+
+  if (requestPath === "/api/config") {
+    if (method !== "GET") {
+      sendJson(res, 405, { error: "Method not allowed" });
+      return;
+    }
+    sendJson(res, 200, {
+      gameId: GAME_ID,
+      serverName: "Game Chat Server",
+      activeRoom: activeRoom
+    });
     return;
   }
 
@@ -449,6 +465,28 @@ const server = http.createServer(async (req, res) => {
       .map(([room]) => normalizeRoom(room))
       .sort((a, b) => a.localeCompare(b, "ru", { sensitivity: "base" }));
     sendJson(res, 200, { rooms });
+    return;
+  }
+
+  if (requestPath === "/admin/set-game-id") {
+    if (method !== "POST") {
+      sendJson(res, 405, { error: "Method not allowed" });
+      return;
+    }
+    const adminToken = String(req.headers["x-admin-token"] || "").trim();
+    if (!isValidAdminToken(adminToken)) {
+      sendJson(res, 403, { error: "Admin access denied" });
+      return;
+    }
+
+    try {
+      const body = await parseJsonBody(req);
+      const gameId = String(body.gameId || "").trim();
+      GAME_ID = gameId;
+      sendJson(res, 200, { status: "ok", gameId: GAME_ID });
+    } catch (error) {
+      sendJson(res, 400, { error: error.message || "Bad request" });
+    }
     return;
   }
 

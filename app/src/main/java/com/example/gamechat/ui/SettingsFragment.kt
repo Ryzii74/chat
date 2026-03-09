@@ -23,6 +23,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         val adminLoginButton = view.findViewById<Button>(R.id.adminLoginButton)
         val adminLogoutButton = view.findViewById<Button>(R.id.adminLogoutButton)
         val chatNotificationsSwitch = view.findViewById<SwitchCompat>(R.id.chatNotificationsSwitch)
+        val gameIdInput = view.findViewById<TextInputEditText>(R.id.gameIdInput)
 
         renderAdminState(
             adminStatusText = adminStatusText,
@@ -36,6 +37,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         chatNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
             UserPreferences.setChatNotificationsEnabled(requireContext(), isChecked)
         }
+        
+        // Загрузка и отображение ID игры (только чтение)
+        loadAndDisplayGameId(gameIdInput)
 
         adminLoginButton.setOnClickListener {
             val pin = adminPinInput.text?.toString().orEmpty()
@@ -106,5 +110,22 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             adminLoginButton.visibility = View.VISIBLE
             adminLogoutButton.visibility = View.GONE
         }
+    }
+    
+    private fun loadAndDisplayGameId(gameIdInput: TextInputEditText) {
+        // Показываем текущее значение
+        gameIdInput.setText(UserPreferences.getEncounterGameId(requireContext()))
+        
+        // Загружаем актуальное значение с сервера в фоне
+        Thread {
+            UserPreferences.syncGameIdFromServer(requireContext())
+            
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                // Обновляем поле после синхронизации
+                val gameId = UserPreferences.getEncounterGameId(requireContext())
+                gameIdInput.setText(gameId)
+            }
+        }.start()
     }
 }

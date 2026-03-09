@@ -43,6 +43,7 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             accessDeniedText.visibility = View.VISIBLE
             serverUrlLayout.visibility = View.GONE
             chatRoomLayout.visibility = View.GONE
+            encGameIdLayout.visibility = View.GONE
             allowedNicksTitle.visibility = View.GONE
             addAllowedNickButton.visibility = View.GONE
             allowedNickInput.visibility = View.GONE
@@ -51,11 +52,6 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             clearRoomSelectorInput.visibility = View.GONE
             saveButton.visibility = View.GONE
             clearButton.visibility = View.GONE
-            
-            // ID игры остается видимым но неактивным для не-админов
-            encGameIdInput.isEnabled = false
-            encGameIdInput.setText(UserPreferences.getEncounterGameId(requireContext()))
-            loadGameIdFromServer(encGameIdInput)
             return
         }
 
@@ -222,28 +218,34 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             saveButton.isEnabled = false
             Thread {
                 val switchRoomResult = ChatServerClient.switchActiveRoom(serverUrl, room, token)
+                val setGameIdResult = ChatServerClient.setGameId(serverUrl, enteredGameId, token)
 
                 activity?.runOnUiThread {
                     if (!isAdded) return@runOnUiThread
                     saveButton.isEnabled = true
 
-                    if (switchRoomResult.isSuccess) {
+                    if (switchRoomResult.isSuccess && setGameIdResult.isSuccess) {
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.server_settings_saved_room, room),
                             Toast.LENGTH_SHORT
                         ).show()
                     } else {
-                        val error = switchRoomResult.exceptionOrNull()
+                        val roomError = switchRoomResult.exceptionOrNull()
+                        val gameIdError = setGameIdResult.exceptionOrNull()
+                        val errorMsg = listOfNotNull(
+                            roomError?.message,
+                            gameIdError?.message
+                        ).joinToString("; ").takeIf { it.isNotEmpty() } 
+                            ?: getString(R.string.unknown_error)
+                        
                         Toast.makeText(
                             requireContext(),
-                            getString(
-                                R.string.server_settings_save_error,
-                                error?.message ?: getString(R.string.unknown_error)
-                            ),
+                            getString(R.string.server_settings_save_error, errorMsg),
                             Toast.LENGTH_LONG
                         ).show()
                     }
+                }
                 }
             }.start()
         }
