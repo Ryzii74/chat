@@ -99,8 +99,10 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             pendingResultLines.clear()
             updateLoadMoreButton(loadMoreButton)
             Thread {
+                val autoEnabledNow = UserPreferences.isSolverAutoEnabled(requireContext())
+                autoModeEnabled = autoEnabledNow
                 val runtimeModes = detectModesForMessage(text) ?: listOf(selectedMode)
-                val autoDetected = autoModeEnabled && runtimeModes != listOf(selectedMode)
+                val autoDetected = autoEnabledNow && runtimeModes != listOf(selectedMode)
                 val result = if (runtimeModes.size == 1) {
                     solverEngine.resolve(runtimeModes.first(), text)
                 } else {
@@ -178,7 +180,8 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     }
 
     private fun detectModesForMessage(text: String): List<SolverMode>? {
-        if (!autoModeEnabled) return null
+        val autoEnabledNow = UserPreferences.isSolverAutoEnabled(requireContext())
+        if (!autoEnabledNow) return null
         val selectedAlias = selectedMode.alias
         if (selectedAlias == "roman" || selectedAlias == "ss") return null
 
