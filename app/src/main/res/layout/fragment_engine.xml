@@ -32,7 +32,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/engine_sectors_title"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="#FFFF00"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -48,7 +48,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/engine_task_title"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="#FFFF00"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -65,7 +65,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/engine_hints_title"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="#FFFF00"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
@@ -81,7 +81,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
                 android:text="@string/engine_bonuses_title"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="#FFFF00"
                 android:textSize="18sp"
                 android:textStyle="bold" />
 
