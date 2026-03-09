@@ -65,7 +65,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="@string/enc_login_button" />
+            android:backgroundTint="#7AA2FF"
+            android:text="@string/enc_login_button"
+            android:textColor="#0B1220" />
 
         <TextView
             android:id="@+id/encResultTitle"
