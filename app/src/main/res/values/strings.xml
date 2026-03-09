@@ -157,4 +157,15 @@
     <string name="engine_native_ssl_error">Ошибка SSL. Проверьте сертификат сайта Encounter.</string>
     <string name="app_not_available_title">Доступ ограничен</string>
     <string name="app_not_available_message">вам не доступно приложение</string>
+    
+    <!-- Notification strings -->
+    <string name="notification_channel_chat">Сообщения чата</string>
+    <string name="notification_channel_chat_description">Уведомления о новых сообщениях в чате</string>
+    <string name="notification_chat_title">Новое сообщение в %1$s</string>
+    <string name="notification_chat_message">%1$s: %2$s</string>
+    
+    <!-- Settings strings -->
+    <string name="settings_notifications_title">Уведомления</string>
+    <string name="settings_chat_notifications">Из чата</string>
+    <string name="settings_chat_notifications_summary">Показывать уведомления о новых сообщениях в чате</string>
 </resources>

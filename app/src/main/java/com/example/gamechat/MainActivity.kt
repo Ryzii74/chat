@@ -13,6 +13,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import com.example.gamechat.data.ChatServerClient
 import com.example.gamechat.data.EncounterApiClient
+import com.example.gamechat.data.NotificationHelper
 import com.example.gamechat.data.UserPreferences
 import com.example.gamechat.ui.ChatsFragment
 import com.example.gamechat.ui.EncounterAuthFragment
@@ -64,6 +65,9 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         
         // Инициализируем GestureDetector для свайпов
         gestureDetector = GestureDetector(this, SwipeGestureListener())
+        
+        // Создаем каналы уведомлений
+        NotificationHelper.createNotificationChannels(this)
 
         drawerToggle = ActionBarDrawerToggle(
             this,

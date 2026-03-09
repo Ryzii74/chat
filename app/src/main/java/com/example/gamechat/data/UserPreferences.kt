@@ -20,6 +20,7 @@ object UserPreferences {
     private const val KEY_SOLVER_MODE_ALIAS = "solver_mode_alias"
     private const val KEY_SOLVER_AUTO_ENABLED = "solver_auto_enabled"
     private const val KEY_SOLVER_HISTORY = "solver_history"
+    private const val KEY_CHAT_NOTIFICATIONS_ENABLED = "chat_notifications_enabled"
     private const val DEFAULT_CHAT_NICK = "Игрок"
     private const val DEFAULT_SERVER_URL = "http://10.0.2.2:8080"
     private const val DEFAULT_CHAT_ROOM = "general"
@@ -258,5 +259,17 @@ object UserPreferences {
         return room.trim()
             .replace("\\s+".toRegex(), "-")
             .ifEmpty { DEFAULT_CHAT_ROOM }
+    }
+    
+    fun isChatNotificationsEnabled(context: Context): Boolean {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_CHAT_NOTIFICATIONS_ENABLED, true)
+    }
+
+    fun setChatNotificationsEnabled(context: Context, enabled: Boolean) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        sharedPrefs.edit()
+            .putBoolean(KEY_CHAT_NOTIFICATIONS_ENABLED, enabled)
+            .apply()
     }
 }

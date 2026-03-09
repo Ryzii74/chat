@@ -14,11 +14,14 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.gamechat.R
 import com.example.gamechat.data.ChatServerClient
 import com.example.gamechat.data.ChatSocketClient
+import com.example.gamechat.data.NotificationHelper
 import com.example.gamechat.data.UserPreferences
 import com.example.gamechat.ui.chat.ChatMessage
 import com.example.gamechat.ui.chat.ChatMessageAdapter
@@ -34,6 +37,7 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
     private lateinit var adapter: ChatMessageAdapter
     private var isHistoryLoading = false
     private var pendingCameraUri: Uri? = null
+    private var isAppInForeground = true
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -53,6 +57,18 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        // Отслеживаем жизненный цикл для уведомлений
+        viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) {
+                isAppInForeground = true
+            }
+            
+            override fun onPause(owner: LifecycleOwner) {
+                isAppInForeground = false
+            }
+        })
+        
         renderName(view)
         setupMessagesList(view)
         setupSend(view)
@@ -200,7 +216,25 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
                     val currentRoom = UserPreferences.getChatRoom(requireContext())
 
                     when (type) {
-                        "message" -> loadHistory(showLoading = false)
+                        "message" -> {
+                            val previousMessageCount = messages.size
+                            loadHistory(showLoading = false)
+                            
+                            // Показываем уведомление, если приложение в фоне и появилось новое сообщение
+                            if (!isAppInForeground && messages.size > previousMessageCount) {
+                                val lastMessage = messages.lastOrNull()
+                                if (lastMessage != null && !lastMessage.isOutgoing) {
+                                    val senderName = lastMessage.senderName ?: "Неизвестный"
+                                    val roomName = UserPreferences.getChatRoom(requireContext())
+                                    NotificationHelper.showChatNotification(
+                                        requireContext(),
+                                        senderName,
+                                        lastMessage.text,
+                                        roomName
+                                    )
+                                }
+                            }
+                        }
                         "message_deleted" -> loadHistory(showLoading = false)
                         "room_cleared" -> {
                             if (activeRoom.isNullOrBlank() || activeRoom.equals(currentRoom, true)) {

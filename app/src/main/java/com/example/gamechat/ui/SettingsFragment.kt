@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
 import com.example.gamechat.R
 import com.example.gamechat.data.ChatServerClient
@@ -21,6 +22,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         val adminPinInput = view.findViewById<TextInputEditText>(R.id.adminPinInput)
         val adminLoginButton = view.findViewById<Button>(R.id.adminLoginButton)
         val adminLogoutButton = view.findViewById<Button>(R.id.adminLogoutButton)
+        val chatNotificationsSwitch = view.findViewById<SwitchCompat>(R.id.chatNotificationsSwitch)
 
         renderAdminState(
             adminStatusText = adminStatusText,
@@ -28,6 +30,12 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
             adminLoginButton = adminLoginButton,
             adminLogoutButton = adminLogoutButton
         )
+        
+        // Настройка уведомлений чата
+        chatNotificationsSwitch.isChecked = UserPreferences.isChatNotificationsEnabled(requireContext())
+        chatNotificationsSwitch.setOnCheckedChangeListener { _, isChecked ->
+            UserPreferences.setChatNotificationsEnabled(requireContext(), isChecked)
+        }
 
         adminLoginButton.setOnClickListener {
             val pin = adminPinInput.text?.toString().orEmpty()
