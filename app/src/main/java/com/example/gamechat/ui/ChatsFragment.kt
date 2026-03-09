@@ -1,10 +1,12 @@
 package com.example.gamechat.ui
 
+import android.Manifest
 import android.app.AlertDialog
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
+import android.content.pm.PackageManager
 import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
@@ -12,6 +14,7 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -57,6 +60,20 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
             pendingCameraUri = null
             if (success && uri != null) {
                 sendImageFromUri(uri)
+            }
+        }
+
+    private val cameraPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                launchCameraInternal()
+            } else {
+                if (!isAdded) return@registerForActivityResult
+                Toast.makeText(
+                    requireContext(),
+                    "Нет доступа к камере",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
         }
 
@@ -404,6 +421,21 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
     }
 
     private fun launchCamera() {
+        val permission = Manifest.permission.CAMERA
+        val hasPermission = ContextCompat.checkSelfPermission(
+            requireContext(),
+            permission
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (!hasPermission) {
+            cameraPermissionLauncher.launch(permission)
+            return
+        }
+
+        launchCameraInternal()
+    }
+
+    private fun launchCameraInternal() {
         val imagesDir = File(requireContext().cacheDir, "chat_images").apply { mkdirs() }
         val imageFile = File(imagesDir, "capture_${System.currentTimeMillis()}.jpg")
         val authority = "${requireContext().packageName}.fileprovider"
