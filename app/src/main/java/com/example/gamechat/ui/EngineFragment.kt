@@ -428,7 +428,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
                     bonus.title
                 )
             }
-            val headerColor = 0xFF00D8FF.toInt()
+            val headerColor = if (bonus.isCompleted) 0xFF66BB6A.toInt() else 0xFF00D8FF.toInt()
             if (bonus.isCompleted && hasTask) {
                 val isExpanded = expandedBonuses.contains(index)
                 val expandIcon = if (isExpanded) "\u25BC" else "\u25B6"
