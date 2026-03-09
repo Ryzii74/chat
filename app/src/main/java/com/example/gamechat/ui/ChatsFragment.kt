@@ -38,6 +38,11 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
     private var isHistoryLoading = false
     private var pendingCameraUri: Uri? = null
     private var isAppInForeground = true
+    
+    // Handler для автоматических повторов
+    private val retryHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val maxRetryAttempts = 3
+    private val retryDelays = listOf(2000L, 5000L, 10000L) // 2с, 5с, 10с
 
     private val pickImageLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -292,21 +297,7 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
             input.text?.clear()
 
             Thread {
-                val result = ChatServerClient.sendMessage(
-                    serverBaseUrl = serverUrl,
-                    room = room,
-                    userName = displayName,
-                    message = message
-                )
-                activity?.runOnUiThread {
-                    if (!isAdded) return@runOnUiThread
-
-                    result.onSuccess {
-                        updateOutgoingMessageStatus(messageIndex, DeliveryState.SENT)
-                    }.onFailure {
-                        updateOutgoingMessageStatus(messageIndex, DeliveryState.FAILED)
-                    }
-                }
+                sendMessageWithRetry(serverUrl, room, displayName, message, null, messageIndex)
             }.start()
         }
 
@@ -402,36 +393,15 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
         val room = UserPreferences.getChatRoom(context)
         
         Thread {
-            val result = if (!failedMessage.imageUrl.isNullOrBlank()) {
-                // Повторная отправка изображения
-                ChatServerClient.sendMessage(
-                    serverBaseUrl = serverUrl,
-                    room = room,
-                    userName = displayName,
-                    message = failedMessage.text,
-                    imageUrl = failedMessage.imageUrl
-                )
-            } else {
-                // Повторная отправка текста
-                ChatServerClient.sendMessage(
-                    serverBaseUrl = serverUrl,
-                    room = room,
-                    userName = displayName,
-                    message = failedMessage.text
-                )
-            }
-            
-            activity?.runOnUiThread {
-                if (!isAdded) return@runOnUiThread
-                
-                result.onSuccess {
-                    updateOutgoingMessageStatus(messageIndex, DeliveryState.SENT)
-                    Toast.makeText(requireContext(), R.string.message_retry_success, Toast.LENGTH_SHORT).show()
-                }.onFailure {
-                    updateOutgoingMessageStatus(messageIndex, DeliveryState.FAILED)
-                    Toast.makeText(requireContext(), R.string.message_retry_failed, Toast.LENGTH_SHORT).show()
-                }
-            }
+            sendMessageWithRetry(
+                serverUrl = serverUrl,
+                room = room,
+                displayName = displayName,
+                message = failedMessage.text,
+                imageData = null, // Для повторной отправки текстового сообщения
+                messageIndex = messageIndex,
+                currentAttempt = 0
+            )
         }.start()
     }
 
@@ -466,20 +436,20 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
 
             val sendResult = uploadResult.mapCatching { uploadedImageUrl ->
                 updateOutgoingMessageImage(messageIndex, uploadedImageUrl)
+                // После загрузки изображения отправляем сообщение - это обычно не требует повторов
                 ChatServerClient.sendMessage(
                     serverBaseUrl = serverUrl,
                     room = room,
                     userName = displayName,
-                    message = caption,
-                    imageUrl = uploadedImageUrl
-                ).getOrThrow()
+                    message = caption
+                )
             }
 
             activity?.runOnUiThread {
                 if (!isAdded) return@runOnUiThread
-                sendResult.onSuccess {
-                    updateOutgoingMessageStatus(messageIndex, DeliveryState.SENT)
-                }.onFailure { error ->
+                
+                // Обрабатываем результат загрузки изображения
+                uploadResult.onFailure { error ->
                     updateOutgoingMessageStatus(messageIndex, DeliveryState.FAILED)
                     val text = error.message ?: getString(R.string.unknown_error)
                     Toast.makeText(
@@ -488,6 +458,8 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
                         Toast.LENGTH_LONG
                     ).show()
                 }
+                
+                // sendResult обрабатывается в sendMessageWithRetry
             }
         }.start()
     }
@@ -529,11 +501,15 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
     }
 
     private fun updateOutgoingMessageStatus(index: Int, status: DeliveryState) {
+        updateOutgoingMessageStatus(index, status, 0)
+    }
+
+    private fun updateOutgoingMessageStatus(index: Int, status: DeliveryState, retryAttempt: Int) {
         if (index !in messages.indices) return
         val current = messages[index]
         if (!current.isOutgoing) return
 
-        messages[index] = current.copy(deliveryState = status)
+        messages[index] = current.copy(deliveryState = status, retryAttempt = retryAttempt)
         adapter.notifyItemChanged(index)
     }
 
@@ -608,6 +584,84 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
 
         scaled.recycle()
         return output.toByteArray()
+    }
+
+    // Метод для отправки текстового сообщения с автоматическими повторами
+    private fun sendMessageWithRetry(
+        serverUrl: String,
+        room: String,
+        displayName: String,
+        message: String,
+        imageData: ByteArray?, // Пока не используется, оставляем для совместимости
+        messageIndex: Int,
+        currentAttempt: Int = 0
+    ) {
+        if (currentAttempt > 0) {
+            activity?.runOnUiThread {
+                messages[messageIndex] = messages[messageIndex].copy(
+                    retryAttempt = currentAttempt,
+                    deliveryState = DeliveryState.SENDING
+                )
+                adapter.notifyItemChanged(messageIndex)
+            }
+        }
+
+        // Отправляем только текстовое сообщение
+        val sendResult = ChatServerClient.sendMessage(
+            serverBaseUrl = serverUrl,
+            room = room,
+            userName = displayName,
+            message = message
+        )
+
+        handleSendResult(sendResult, serverUrl, room, displayName, message, null, messageIndex, currentAttempt)
+    }
+
+    // Обработка результата отправки с логикой повторов
+    private fun handleSendResult(
+        result: Result<*>,
+        serverUrl: String,
+        room: String,
+        displayName: String,
+        message: String,
+        imageData: ByteArray?,
+        messageIndex: Int,
+        currentAttempt: Int
+    ) {
+        activity?.runOnUiThread {
+            result.onSuccess {
+                // Успешная отправка
+                updateOutgoingMessageStatus(messageIndex, DeliveryState.SENT)
+            }.onFailure { error ->
+                // Неудача - проверяем, нужна ли автоматическая попытка
+                if (currentAttempt < maxRetryAttempts) {
+                    // Автоматическая попытка
+                    val delay = retryDelays.getOrElse(currentAttempt) { 10000L }
+                    retryHandler.postDelayed({
+                        Thread {
+                            sendMessageWithRetry(
+                                serverUrl, room, displayName, message, null,
+                                messageIndex, currentAttempt + 1
+                            )
+                        }.start()
+                    }, delay)
+                } else {
+                    // Исчерпаны автоматические попытки - статус FAILED для ручного повтора
+                    messages[messageIndex] = messages[messageIndex].copy(
+                        retryAttempt = currentAttempt,
+                        deliveryState = DeliveryState.FAILED
+                    )
+                    adapter.notifyItemChanged(messageIndex)
+                    
+                    val text = error.message ?: getString(R.string.unknown_error)
+                    Toast.makeText(
+                        requireContext(),
+                        getString(R.string.message_send_error, text),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
     }
 
     private fun scaleBitmapToMax(source: Bitmap, maxSize: Int): Bitmap {

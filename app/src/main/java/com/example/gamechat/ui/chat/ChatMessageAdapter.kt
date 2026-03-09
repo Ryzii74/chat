@@ -74,7 +74,7 @@ class ChatMessageAdapter(
                 messageText.setTextColor(0xFFFFFFFF.toInt())
                 messageSender.setTextColor(0xFFB3E5FC.toInt())
                 messageTime.setTextColor(0xB3FFFFFF.toInt())
-                bindOutgoingStatus(item.deliveryState)
+                bindOutgoingStatus(item.deliveryState, item.retryAttempt)
             } else {
                 params.gravity = Gravity.START
                 bubbleContainer.setBackgroundResource(R.drawable.bg_chat_bubble_incoming)
@@ -176,7 +176,7 @@ class ChatMessageAdapter(
             }
         }
 
-        private fun bindOutgoingStatus(state: DeliveryState) {
+        private fun bindOutgoingStatus(state: DeliveryState, retryAttempt: Int = 0) {
             when (state) {
                 DeliveryState.NONE -> {
                     messageStatus.visibility = View.GONE
@@ -184,8 +184,13 @@ class ChatMessageAdapter(
 
                 DeliveryState.SENDING -> {
                     messageStatus.visibility = View.VISIBLE
-                    messageStatus.text = "\u2713"
-                    messageStatus.setTextColor(0xB3FFFFFF.toInt())
+                    if (retryAttempt > 0) {
+                        messageStatus.text = "\u2713 ($retryAttempt)"
+                        messageStatus.setTextColor(0xFFFFB74D.toInt()) // Orange for retry
+                    } else {
+                        messageStatus.text = "\u2713"
+                        messageStatus.setTextColor(0xB3FFFFFF.toInt())
+                    }
                 }
 
                 DeliveryState.SENT -> {
@@ -196,8 +201,13 @@ class ChatMessageAdapter(
 
                 DeliveryState.FAILED -> {
                     messageStatus.visibility = View.VISIBLE
-                    messageStatus.text = "!"
-                    messageStatus.setTextColor(0xFFFFCDD2.toInt())
+                    if (retryAttempt > 0) {
+                        messageStatus.text = "! ($retryAttempt)"
+                        messageStatus.setTextColor(0xFFFF8A80.toInt()) // Light red for failed retry
+                    } else {
+                        messageStatus.text = "!"
+                        messageStatus.setTextColor(0xFFFFCDD2.toInt())
+                    }
                 }
             }
         }

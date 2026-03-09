@@ -14,5 +14,6 @@ data class ChatMessage(
     val isOutgoing: Boolean,
     val deliveryState: DeliveryState = DeliveryState.NONE,
     val timeLabel: String = "",
-    val imageUrl: String? = null
+    val imageUrl: String? = null,
+    val retryAttempt: Int = 0  // Количество попыток отправки
 )
