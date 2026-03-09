@@ -22,7 +22,7 @@ object UserPreferences {
     private const val KEY_SOLVER_HISTORY = "solver_history"
     private const val KEY_CHAT_NOTIFICATIONS_ENABLED = "chat_notifications_enabled"
     private const val DEFAULT_CHAT_NICK = "Игрок"
-    private const val DEFAULT_SERVER_URL = "http://10.0.2.2:8080"
+    private const val DEFAULT_SERVER_URL = "http://46.101.168.241:8080"
     private const val DEFAULT_CHAT_ROOM = "general"
     private const val DEFAULT_ENC_GAME_ID = ""
     private const val DEFAULT_SOLVER_MODE_ALIAS = "1"

@@ -12,7 +12,7 @@
     <string name="home_title">Игровой чат</string>
     <string name="home_subtitle">Откройте меню и выберите раздел</string>
     <string name="chat_display_name_with_room">Комната: %2$s | Вы: %1$s</string>
-    <string name="settings_server_url_hint">URL сервера (например, http://10.0.2.2:8080)</string>
+    <string name="settings_server_url_hint">URL сервера (например, http://46.101.168.241:8080)</string>
     <string name="settings_room_hint">Комната (например, общая)</string>
     <string name="settings_enc_game_id_hint">ID игры Encounter</string>
     <string name="settings_save_server">Сохранить настройки сервера</string>
