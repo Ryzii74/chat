@@ -25,7 +25,6 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
         val accessDeniedText = view.findViewById<TextView>(R.id.serverSettingsAccessDenied)
         val serverUrlLayout = view.findViewById<TextInputLayout>(R.id.serverUrlLayout)
         val chatRoomLayout = view.findViewById<TextInputLayout>(R.id.chatRoomLayout)
-        val encGameIdLayout = view.findViewById<TextInputLayout>(R.id.encGameIdLayout)
         val allowedNicksTitle = view.findViewById<TextView>(R.id.allowedNicksTitle)
         val allowedNickInput = view.findViewById<TextInputEditText>(R.id.allowedNickInput)
         val addAllowedNickButton = view.findViewById<Button>(R.id.addAllowedNickButton)
@@ -43,7 +42,8 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             accessDeniedText.visibility = View.VISIBLE
             serverUrlLayout.visibility = View.GONE
             chatRoomLayout.visibility = View.GONE
-            encGameIdLayout.visibility = View.GONE
+            // ID игры доступен для просмотра всем пользователям
+            encGameIdInput.isEnabled = false  // Только для чтения у не-админов
             allowedNicksTitle.visibility = View.GONE
             addAllowedNickButton.visibility = View.GONE
             allowedNickInput.visibility = View.GONE
@@ -52,6 +52,10 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             clearRoomSelectorInput.visibility = View.GONE
             saveButton.visibility = View.GONE
             clearButton.visibility = View.GONE
+            
+            // Для не-админов загружаем ID игры с сервера
+            encGameIdInput.setText(UserPreferences.getEncounterGameId(requireContext()))
+            loadGameIdFromServer(encGameIdInput)
             return
         }
 
@@ -294,5 +298,30 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                 }
             }.start()
         }
+    }
+
+    private fun loadGameIdFromServer(encGameIdInput: TextInputEditText) {
+        val serverUrl = UserPreferences.getServerUrl(requireContext())
+        
+        Thread {
+            // Получаем конфигурацию сервера включая gameId
+            val result = ChatServerClient.getServerConfig(serverUrl)
+            
+            activity?.runOnUiThread {
+                if (!isAdded) return@runOnUiThread
+                
+                result.onSuccess { config ->
+                    val gameId = config.gameId?.trim().orEmpty()
+                    if (gameId.isNotEmpty()) {
+                        UserPreferences.setEncounterGameId(requireContext(), gameId)
+                        encGameIdInput.setText(gameId)
+                    }
+                }.onFailure {
+                    // Если сервер не поддерживает API конфигурации, оставляем текущее значение
+                    val currentGameId = UserPreferences.getEncounterGameId(requireContext())
+                    encGameIdInput.setText(currentGameId)
+                }
+            }
+        }.start()
     }
 }

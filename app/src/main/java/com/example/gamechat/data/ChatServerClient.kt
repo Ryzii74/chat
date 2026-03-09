@@ -455,6 +455,47 @@ object ChatServerClient {
         }
     }
 
+    // Получение настроек сервера включая gameId
+    fun getServerConfig(serverBaseUrl: String): Result<ServerConfig> {
+        return runCatching {
+            val connection = URL("$serverBaseUrl/api/config").openConnection() as HttpURLConnection
+            connection.apply {
+                requestMethod = "GET"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                setRequestProperty("Accept", "application/json")
+            }
+
+            val statusCode = connection.responseCode
+            val responseBody = readResponse(connection)
+            connection.disconnect()
+
+            if (statusCode !in 200..299) {
+                // Если API не поддерживается, возвращаем пустую конфигурацию
+                ServerConfig(gameId = "", serverName = "")
+            } else {
+                parseServerConfig(responseBody)
+            }
+        }
+    }
+
+    data class ServerConfig(
+        val gameId: String?,
+        val serverName: String?
+    )
+
+    private fun parseServerConfig(response: String): ServerConfig {
+        return try {
+            val json = JSONObject(response)
+            ServerConfig(
+                gameId = json.optString("gameId", ""),
+                serverName = json.optString("serverName", "")
+            )
+        } catch (e: Exception) {
+            ServerConfig(gameId = "", serverName = "")
+        }
+    }
+
     private fun buildHistoryUrl(serverBaseUrl: String, room: String, limit: Int?): String =
         buildMessagesUrl(serverBaseUrl, room, limit)
 
