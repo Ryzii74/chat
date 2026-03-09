@@ -7,6 +7,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.example.gamechat.R
+import com.example.gamechat.data.ChatServerClient
 import com.example.gamechat.data.UserPreferences
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
@@ -30,32 +31,52 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
         adminLoginButton.setOnClickListener {
             val pin = adminPinInput.text?.toString().orEmpty()
-            val success = UserPreferences.loginAsAdmin(requireContext(), pin)
-            if (success) {
-                adminPinInput.text?.clear()
-                Toast.makeText(requireContext(), R.string.admin_login_success, Toast.LENGTH_SHORT).show()
-            } else {
-                Toast.makeText(requireContext(), R.string.admin_login_error, Toast.LENGTH_SHORT).show()
-            }
-            renderAdminState(
-                adminStatusText = adminStatusText,
-                adminPinLayout = adminPinLayout,
-                adminLoginButton = adminLoginButton,
-                adminLogoutButton = adminLogoutButton
-            )
-            activity?.recreate()
+            val serverUrl = UserPreferences.getServerUrl(requireContext())
+            adminLoginButton.isEnabled = false
+            Thread {
+                val result = ChatServerClient.loginAsAdmin(serverUrl, pin)
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
+                    adminLoginButton.isEnabled = true
+
+                    result.onSuccess { token ->
+                        UserPreferences.saveAdminToken(requireContext(), token)
+                        adminPinInput.text?.clear()
+                        Toast.makeText(requireContext(), R.string.admin_login_success, Toast.LENGTH_SHORT).show()
+                        renderAdminState(
+                            adminStatusText = adminStatusText,
+                            adminPinLayout = adminPinLayout,
+                            adminLoginButton = adminLoginButton,
+                            adminLogoutButton = adminLogoutButton
+                        )
+                        activity?.recreate()
+                    }.onFailure {
+                        Toast.makeText(requireContext(), R.string.admin_login_error, Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }.start()
         }
 
         adminLogoutButton.setOnClickListener {
-            UserPreferences.logoutAdmin(requireContext())
-            Toast.makeText(requireContext(), R.string.admin_logout_success, Toast.LENGTH_SHORT).show()
-            renderAdminState(
-                adminStatusText = adminStatusText,
-                adminPinLayout = adminPinLayout,
-                adminLoginButton = adminLoginButton,
-                adminLogoutButton = adminLogoutButton
-            )
-            activity?.recreate()
+            val serverUrl = UserPreferences.getServerUrl(requireContext())
+            val adminToken = UserPreferences.getAdminToken(requireContext())
+            adminLogoutButton.isEnabled = false
+            Thread {
+                ChatServerClient.logoutAdmin(serverUrl, adminToken)
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
+                    adminLogoutButton.isEnabled = true
+                    UserPreferences.logoutAdmin(requireContext())
+                    Toast.makeText(requireContext(), R.string.admin_logout_success, Toast.LENGTH_SHORT).show()
+                    renderAdminState(
+                        adminStatusText = adminStatusText,
+                        adminPinLayout = adminPinLayout,
+                        adminLoginButton = adminLoginButton,
+                        adminLogoutButton = adminLogoutButton
+                    )
+                    activity?.recreate()
+                }
+            }.start()
         }
     }
 

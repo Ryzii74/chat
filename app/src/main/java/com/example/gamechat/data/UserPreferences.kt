@@ -7,18 +7,24 @@ object UserPreferences {
     private const val KEY_SERVER_URL = "server_url"
     private const val KEY_CHAT_ROOM = "chat_room"
     private const val KEY_ENC_GAME_ID = "enc_game_id"
-    private const val KEY_IS_ADMIN = "is_admin"
+    private const val KEY_ADMIN_TOKEN = "admin_token"
     private const val KEY_ENC_SITE = "enc_site"
     private const val KEY_ENC_LOGIN = "enc_login"
     private const val KEY_ENC_USER_ID = "enc_user_id"
     private const val KEY_ENC_GUID = "enc_guid"
     private const val KEY_ENC_STOKEN = "enc_stoken"
     private const val KEY_ENC_ATOKEN = "enc_atoken"
+    private const val KEY_ENC_LAST_SITE = "enc_last_site"
+    private const val KEY_ENC_LAST_LOGIN = "enc_last_login"
+    private const val KEY_ENC_LAST_PASSWORD = "enc_last_password"
+    private const val KEY_SOLVER_MODE_ALIAS = "solver_mode_alias"
+    private const val KEY_SOLVER_AUTO_ENABLED = "solver_auto_enabled"
     private const val DEFAULT_CHAT_NICK = "Игрок"
     private const val DEFAULT_SERVER_URL = "http://10.0.2.2:8080"
     private const val DEFAULT_CHAT_ROOM = "general"
     private const val DEFAULT_ENC_GAME_ID = ""
-    private const val ADMIN_PIN = "1234"
+    private const val DEFAULT_SOLVER_MODE_ALIAS = "1"
+    private const val DEFAULT_SOLVER_AUTO_ENABLED = false
 
     fun getServerUrl(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -56,23 +62,24 @@ object UserPreferences {
     }
 
     fun isAdmin(context: Context): Boolean {
-        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return prefs.getBoolean(KEY_IS_ADMIN, false)
+        return getAdminToken(context).isNotBlank()
     }
 
-    fun loginAsAdmin(context: Context, pin: String): Boolean {
-        if (pin.trim() != ADMIN_PIN) return false
+    fun saveAdminToken(context: Context, token: String) {
+        val normalizedToken = token.trim()
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_IS_ADMIN, true).apply()
-        return true
+        prefs.edit().putString(KEY_ADMIN_TOKEN, normalizedToken).apply()
     }
 
     fun logoutAdmin(context: Context) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putBoolean(KEY_IS_ADMIN, false).apply()
+        prefs.edit().remove(KEY_ADMIN_TOKEN).apply()
     }
 
-    fun getAdminPinForApi(): String = ADMIN_PIN
+    fun getAdminToken(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_ADMIN_TOKEN, "").orEmpty().trim()
+    }
 
     data class EncounterSession(
         val site: String,
@@ -81,6 +88,12 @@ object UserPreferences {
         val guid: String?,
         val stoken: String?,
         val atoken: String?
+    )
+
+    data class EncounterCredentials(
+        val site: String,
+        val login: String,
+        val password: String
     )
 
     fun saveEncounterSession(
@@ -115,8 +128,67 @@ object UserPreferences {
         )
     }
 
+    fun saveEncounterCredentials(
+        context: Context,
+        site: String,
+        login: String,
+        password: String
+    ) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit()
+            .putString(KEY_ENC_LAST_SITE, site.trim())
+            .putString(KEY_ENC_LAST_LOGIN, login.trim())
+            .putString(KEY_ENC_LAST_PASSWORD, password)
+            .apply()
+    }
+
+    fun getEncounterCredentials(context: Context): EncounterCredentials {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val session = getEncounterSession(context)
+        val siteFromSession = session.site.trim()
+        val loginFromSession = session.login.trim()
+        val site = prefs.getString(KEY_ENC_LAST_SITE, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: siteFromSession
+        val login = prefs.getString(KEY_ENC_LAST_LOGIN, null)
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: loginFromSession
+        val password = prefs.getString(KEY_ENC_LAST_PASSWORD, "").orEmpty()
+        return EncounterCredentials(
+            site = site,
+            login = login,
+            password = password
+        )
+    }
+
     fun getChatNick(context: Context): String {
         return getEncounterSession(context).login.trim().ifEmpty { DEFAULT_CHAT_NICK }
+    }
+
+    fun getSolverModeAlias(context: Context): String {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getString(KEY_SOLVER_MODE_ALIAS, DEFAULT_SOLVER_MODE_ALIAS)
+            .orEmpty()
+            .trim()
+            .ifEmpty { DEFAULT_SOLVER_MODE_ALIAS }
+    }
+
+    fun setSolverModeAlias(context: Context, alias: String) {
+        val normalized = alias.trim().ifEmpty { DEFAULT_SOLVER_MODE_ALIAS }
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString(KEY_SOLVER_MODE_ALIAS, normalized).apply()
+    }
+
+    fun isSolverAutoEnabled(context: Context): Boolean {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return prefs.getBoolean(KEY_SOLVER_AUTO_ENABLED, DEFAULT_SOLVER_AUTO_ENABLED)
+    }
+
+    fun setSolverAutoEnabled(context: Context, enabled: Boolean) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putBoolean(KEY_SOLVER_AUTO_ENABLED, enabled).apply()
     }
 
     private fun normalizeServerBaseUrl(url: String): String {

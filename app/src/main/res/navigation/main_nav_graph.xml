@@ -15,6 +15,11 @@
         android:label="@string/menu_chats" />
 
     <fragment
+        android:id="@+id/solverFragment"
+        android:name="com.example.gamechat.ui.SolverFragment"
+        android:label="@string/menu_solver" />
+
+    <fragment
         android:id="@+id/settingsFragment"
         android:name="com.example.gamechat.ui.SettingsFragment"
         android:label="@string/menu_settings" />

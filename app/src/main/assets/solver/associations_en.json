@@ -1,0 +1,12 @@
+{
+  "fire": ["heat", "flame", "smoke", "spark", "light"],
+  "water": ["river", "ocean", "wave", "rain", "stream"],
+  "night": ["moon", "dark", "sleep", "stars", "silence"],
+  "sun": ["light", "day", "heat", "sky", "beam"],
+  "code": ["cipher", "symbol", "secret", "token", "digit"],
+  "game": ["level", "team", "bonus", "task", "victory"],
+  "logic": ["reason", "answer", "analysis", "order", "proof"],
+  "sector": ["level", "answer", "task", "code", "zone"],
+  "team": ["player", "support", "victory", "group", "trust"],
+  "victory": ["success", "team", "reward", "finish", "win"]
+}

@@ -10,6 +10,8 @@ import java.net.URL
 
 object ChatServerClient {
     private const val MESSAGES_PATH = "messages"
+    private const val ADMIN_LOGIN_PATH = "admin/login"
+    private const val ADMIN_LOGOUT_PATH = "admin/logout"
     private const val SWITCH_ROOM_PATH = "admin/switch-room"
     private const val CLEAR_ROOM_PATH = "admin/clear-room"
     private const val ALLOWED_NICKS_PATH = "admin/allowed-nicks"
@@ -30,6 +32,71 @@ object ChatServerClient {
         val messages: List<HistoryMessage>,
         val activeRoom: String?
     )
+
+    fun loginAsAdmin(serverBaseUrl: String, pin: String): Result<String> {
+        return runCatching {
+            val normalizedPin = pin.trim()
+            require(normalizedPin.isNotEmpty()) { "Введите PIN администратора" }
+
+            val loginUrl = buildAdminLoginUrl(serverBaseUrl)
+            val payload = JSONObject().apply {
+                put("pin", normalizedPin)
+            }.toString()
+
+            val connection = (URL(loginUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                setRequestProperty("Accept", "application/json")
+            }
+            try {
+                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                    writer.write(payload)
+                }
+                val statusCode = connection.responseCode
+                val responseBody = readResponse(connection)
+                if (statusCode !in 200..299) {
+                    throw IllegalStateException("HTTP $statusCode: $responseBody")
+                }
+                val token = JSONObject(responseBody.ifBlank { "{}" }).optString("adminToken").trim()
+                if (token.isBlank()) {
+                    throw IllegalStateException("Admin token not found in response")
+                }
+                token
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
+    fun logoutAdmin(serverBaseUrl: String, adminToken: String): Result<String> {
+        return runCatching {
+            val token = adminToken.trim()
+            require(token.isNotEmpty()) { "Admin token is empty" }
+
+            val logoutUrl = buildAdminLogoutUrl(serverBaseUrl)
+            val connection = (URL(logoutUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("X-Admin-Token", token)
+            }
+            try {
+                val statusCode = connection.responseCode
+                val responseBody = readResponse(connection)
+                if (statusCode in 200..299) {
+                    responseBody.ifBlank { "ok" }
+                } else {
+                    throw IllegalStateException("HTTP $statusCode: $responseBody")
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
 
     fun loadHistory(
         serverBaseUrl: String,
@@ -131,7 +198,7 @@ object ChatServerClient {
         }
     }
 
-    fun switchActiveRoom(serverBaseUrl: String, room: String, adminPin: String): Result<String> {
+    fun switchActiveRoom(serverBaseUrl: String, room: String, adminToken: String): Result<String> {
         return runCatching {
             val switchUrl = buildSwitchRoomUrl(serverBaseUrl)
             val payload = JSONObject().apply {
@@ -145,7 +212,7 @@ object ChatServerClient {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("Accept", "application/json")
-                setRequestProperty("X-Admin-Pin", adminPin)
+                setRequestProperty("X-Admin-Token", adminToken)
             }
 
             try {
@@ -166,7 +233,7 @@ object ChatServerClient {
         }
     }
 
-    fun clearRoomHistory(serverBaseUrl: String, room: String, adminPin: String): Result<String> {
+    fun clearRoomHistory(serverBaseUrl: String, room: String, adminToken: String): Result<String> {
         return runCatching {
             val clearUrl = buildClearRoomUrl(serverBaseUrl)
             val payload = JSONObject().apply {
@@ -180,7 +247,7 @@ object ChatServerClient {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("Accept", "application/json")
-                setRequestProperty("X-Admin-Pin", adminPin)
+                setRequestProperty("X-Admin-Token", adminToken)
             }
 
             try {
@@ -235,7 +302,7 @@ object ChatServerClient {
         }
     }
 
-    fun getAllowedNicks(serverBaseUrl: String, adminPin: String): Result<List<String>> {
+    fun getAllowedNicks(serverBaseUrl: String, adminToken: String): Result<List<String>> {
         return runCatching {
             val url = buildAllowedNicksUrl(serverBaseUrl)
             val connection = (URL(url).openConnection() as HttpURLConnection).apply {
@@ -243,7 +310,7 @@ object ChatServerClient {
                 connectTimeout = 10_000
                 readTimeout = 10_000
                 setRequestProperty("Accept", "application/json")
-                setRequestProperty("X-Admin-Pin", adminPin)
+                setRequestProperty("X-Admin-Token", adminToken)
             }
             try {
                 val statusCode = connection.responseCode
@@ -265,7 +332,7 @@ object ChatServerClient {
         }
     }
 
-    fun setAllowedNicks(serverBaseUrl: String, nicks: List<String>, adminPin: String): Result<String> {
+    fun setAllowedNicks(serverBaseUrl: String, nicks: List<String>, adminToken: String): Result<String> {
         return runCatching {
             val url = buildAllowedNicksUrl(serverBaseUrl)
             val payload = JSONObject().apply {
@@ -279,7 +346,7 @@ object ChatServerClient {
                 doOutput = true
                 setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 setRequestProperty("Accept", "application/json")
-                setRequestProperty("X-Admin-Pin", adminPin)
+                setRequestProperty("X-Admin-Token", adminToken)
             }
             try {
                 OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
@@ -362,6 +429,16 @@ object ChatServerClient {
 
     private fun buildSendUrl(serverBaseUrl: String, room: String): String =
         buildMessagesUrl(serverBaseUrl, room, null)
+
+    private fun buildAdminLoginUrl(serverBaseUrl: String): String {
+        val base = normalizeBaseUrl(serverBaseUrl)
+        return "$base/$ADMIN_LOGIN_PATH"
+    }
+
+    private fun buildAdminLogoutUrl(serverBaseUrl: String): String {
+        val base = normalizeBaseUrl(serverBaseUrl)
+        return "$base/$ADMIN_LOGOUT_PATH"
+    }
 
     private fun buildSwitchRoomUrl(serverBaseUrl: String): String {
         val trimmed = serverBaseUrl.trim()

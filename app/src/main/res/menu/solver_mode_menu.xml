@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/solverMode1"
+        android:title="@string/solver_mode_1" />
+    <item
+        android:id="@+id/solverMode2"
+        android:title="@string/solver_mode_2" />
+    <item
+        android:id="@+id/solverMode36"
+        android:title="@string/solver_mode_36" />
+    <item
+        android:id="@+id/solverMode3"
+        android:title="@string/solver_mode_3" />
+    <item
+        android:id="@+id/solverMode7"
+        android:title="@string/solver_mode_7" />
+    <item
+        android:id="@+id/solverMode12"
+        android:title="@string/solver_mode_12" />
+    <item
+        android:id="@+id/solverMode28"
+        android:title="@string/solver_mode_28" />
+    <item
+        android:id="@+id/solverMode14"
+        android:title="@string/solver_mode_14" />
+    <item
+        android:id="@+id/solverMode16"
+        android:title="@string/solver_mode_16" />
+    <item
+        android:id="@+id/solverMode13"
+        android:title="@string/solver_mode_13" />
+    <item
+        android:id="@+id/solverMode22"
+        android:title="@string/solver_mode_22" />
+    <item
+        android:id="@+id/solverMode23"
+        android:title="@string/solver_mode_23" />
+    <item
+        android:id="@+id/solverMode11"
+        android:title="@string/solver_mode_11" />
+    <item
+        android:id="@+id/solverMode4"
+        android:title="@string/solver_mode_4" />
+    <item
+        android:id="@+id/solverMode5"
+        android:title="@string/solver_mode_5" />
+</menu>

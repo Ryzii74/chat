@@ -14,12 +14,14 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const DATA_FILE = process.env.DATA_FILE || path.join(DATA_DIR, "chat-state.json");
 const MEDIA_DIR = process.env.MEDIA_DIR || path.join(DATA_DIR, "media");
 const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES || 3 * 1024 * 1024);
+const ADMIN_TOKEN_TTL_MS = Number(process.env.ADMIN_TOKEN_TTL_MS || 7 * 24 * 60 * 60 * 1000);
 
 const roomMessages = new Map();
 let activeRoom = DEFAULT_ROOM;
 const ALWAYS_ALLOWED_NICK = "ryzi";
 let allowedNicks = [ALWAYS_ALLOWED_NICK];
 let persistenceReady = false;
+const adminTokens = new Map();
 
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -28,7 +30,7 @@ function sendJson(res, statusCode, payload) {
     "Content-Length": Buffer.byteLength(body),
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Accept",
+    "Access-Control-Allow-Headers": "Content-Type, Accept, X-Admin-Token",
   });
   res.end(body);
 }
@@ -39,7 +41,7 @@ function sendText(res, statusCode, body) {
     "Content-Length": Buffer.byteLength(body),
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Accept",
+    "Access-Control-Allow-Headers": "Content-Type, Accept, X-Admin-Token",
   });
   res.end(body);
 }
@@ -182,6 +184,34 @@ function toMediaPathFromUrl(imageUrl) {
   return path.basename(value);
 }
 
+function issueAdminToken() {
+  const token = crypto.randomUUID();
+  adminTokens.set(token, Date.now());
+  return token;
+}
+
+function cleanupExpiredAdminTokens() {
+  const now = Date.now();
+  for (const [token, createdAt] of adminTokens.entries()) {
+    if (now - createdAt > ADMIN_TOKEN_TTL_MS) {
+      adminTokens.delete(token);
+    }
+  }
+}
+
+function isValidAdminToken(token) {
+  const raw = String(token || "").trim();
+  if (!raw) return false;
+  cleanupExpiredAdminTokens();
+  const createdAt = adminTokens.get(raw);
+  if (!createdAt) return false;
+  if (Date.now() - createdAt > ADMIN_TOKEN_TTL_MS) {
+    adminTokens.delete(raw);
+    return false;
+  }
+  return true;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   const requestPath = url.pathname.replace(/\/+$/, "") || "/";
@@ -191,7 +221,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Accept",
+      "Access-Control-Allow-Headers": "Content-Type, Accept, X-Admin-Token",
     });
     res.end();
     return;
@@ -207,6 +237,8 @@ const server = http.createServer(async (req, res) => {
         "/ws",
         "/app-access/check",
         "/engine/level-changed",
+        "/admin/login",
+        "/admin/logout",
         "/admin/switch-room",
         "/admin/clear-room",
         "/admin/allowed-nicks",
@@ -278,8 +310,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const pin = String(req.headers["x-admin-pin"] || "").trim();
-    if (pin !== ADMIN_PIN) {
+    const adminToken = String(req.headers["x-admin-token"] || "").trim();
+    if (!isValidAdminToken(adminToken)) {
       sendJson(res, 403, { error: "Admin access denied" });
       return;
     }
@@ -304,8 +336,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    const pin = String(req.headers["x-admin-pin"] || "").trim();
-    if (pin !== ADMIN_PIN) {
+    const adminToken = String(req.headers["x-admin-token"] || "").trim();
+    if (!isValidAdminToken(adminToken)) {
       sendJson(res, 403, { error: "Admin access denied" });
       return;
     }
@@ -333,9 +365,44 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  if (requestPath === "/admin/login") {
+    if (method !== "POST") {
+      sendJson(res, 405, { error: "Method not allowed" });
+      return;
+    }
+    try {
+      const body = await parseJsonBody(req);
+      const pin = String(body.pin || "").trim();
+      if (pin !== ADMIN_PIN) {
+        sendJson(res, 403, { error: "Admin access denied" });
+        return;
+      }
+      const adminToken = issueAdminToken();
+      sendJson(res, 200, { status: "ok", adminToken });
+    } catch (error) {
+      sendJson(res, 400, { error: error.message || "Bad request" });
+    }
+    return;
+  }
+
+  if (requestPath === "/admin/logout") {
+    if (method !== "POST") {
+      sendJson(res, 405, { error: "Method not allowed" });
+      return;
+    }
+    const adminToken = String(req.headers["x-admin-token"] || "").trim();
+    if (!adminToken) {
+      sendJson(res, 400, { error: "Admin token is required" });
+      return;
+    }
+    adminTokens.delete(adminToken);
+    sendJson(res, 200, { status: "ok" });
+    return;
+  }
+
   if (requestPath === "/admin/allowed-nicks") {
-    const pin = String(req.headers["x-admin-pin"] || "").trim();
-    if (pin !== ADMIN_PIN) {
+    const adminToken = String(req.headers["x-admin-token"] || "").trim();
+    if (!isValidAdminToken(adminToken)) {
       sendJson(res, 403, { error: "Admin access denied" });
       return;
     }

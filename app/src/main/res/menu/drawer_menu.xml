@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/solverAutoToggleItem"
+        android:title="@string/menu_solver_auto"
+        app:actionViewClass="androidx.appcompat.widget.SwitchCompat"
+        app:showAsAction="always" />
+
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/encounterAuthFragment"
@@ -9,6 +16,10 @@
             android:id="@+id/chatsFragment"
             android:icon="@android:drawable/ic_dialog_email"
             android:title="@string/menu_chats" />
+        <item
+            android:id="@+id/solverFragment"
+            android:icon="@android:drawable/ic_menu_edit"
+            android:title="@string/menu_solver" />
         <item
             android:id="@+id/engineFragment"
             android:icon="@android:drawable/ic_media_play"

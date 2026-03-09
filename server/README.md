@@ -19,6 +19,7 @@ npm start
 - `MAX_MESSAGES` (по умолчанию `200`)
 - `DEFAULT_ROOM` (по умолчанию `general`)
 - `ADMIN_PIN` (по умолчанию `1234`)
+- `ADMIN_TOKEN_TTL_MS` (по умолчанию `604800000`, 7 дней)
 - `DATA_DIR` (по умолчанию `./data`)
 - `DATA_FILE` (по умолчанию `./data/chat-state.json`)
 
@@ -45,13 +46,21 @@ npm start
 - `GET /media/<id>.jpg`
   - Возвращает изображение.
 
+- `POST /admin/login`
+  - Тело: `{"pin":"1234"}`
+  - Успех: `200` + `{"status":"ok","adminToken":"<token>"}`
+
+- `POST /admin/logout`
+  - Header: `X-Admin-Token: <token>`
+  - Успех: `200` + `{"status":"ok"}`
+
 - `POST /admin/switch-room`
-  - Header: `X-Admin-Pin: 1234`
+  - Header: `X-Admin-Token: <token>`
   - Тело: `{"room":"new-room"}`
   - Успех: `200` + `{"status":"ok","activeRoom":"new-room"}`
 
 - `POST /admin/clear-room`
-  - Header: `X-Admin-Pin: 1234`
+  - Header: `X-Admin-Token: <token>`
   - Тело: `{"room":"new-room"}`
   - Успех: `200` + `{"status":"ok","clearedRoom":"new-room"}`
 

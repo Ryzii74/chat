@@ -32,7 +32,14 @@ import com.example.gamechat.data.ChatSocketClient
 import com.example.gamechat.data.EncounterApiClient
 import com.example.gamechat.data.EncounterUserAgentProvider
 import com.example.gamechat.data.UserPreferences
+import java.io.IOException
+import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 class EngineFragment : Fragment(R.layout.fragment_engine) {
@@ -47,8 +54,16 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
     private var sectorsExpanded: Boolean = true
     private var mixedActionsExpanded: Boolean = false
     private val expandedBonuses = mutableSetOf<Int>()
+    private val pendingCodes = ArrayDeque<PendingCode>()
+    private var isSendingPendingCode: Boolean = false
+    private var pendingRetryScheduled: Boolean = false
     private var suppressNextLevelBroadcast = false
     private var host: Host? = null
+
+    private data class PendingCode(
+        val code: String,
+        val queuedAtMillis: Long
+    )
 
     private val hintsTimer = object : Runnable {
         override fun run() {
@@ -56,6 +71,13 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
             if (view != null && hintsBaseSeconds.any { (it ?: 0) > 0 }) {
                 mainHandler.postDelayed(this, 1000)
             }
+        }
+    }
+
+    private val pendingRetryTimer = object : Runnable {
+        override fun run() {
+            pendingRetryScheduled = false
+            processPendingCodesQueue()
         }
     }
 
@@ -91,9 +113,8 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
                 Toast.makeText(requireContext(), R.string.engine_code_empty, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            sendCode(code) {
-                codeInput.text?.clear()
-            }
+            enqueuePendingCode(code)
+            codeInput.text?.clear()
         }
 
         loadLevel()
@@ -101,17 +122,21 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
 
     override fun onDestroyView() {
         mainHandler.removeCallbacks(hintsTimer)
+        mainHandler.removeCallbacks(pendingRetryTimer)
         super.onDestroyView()
     }
 
     override fun onResume() {
         super.onResume()
         connectEngineSocket()
+        processPendingCodesQueue()
     }
 
     override fun onPause() {
         super.onPause()
         ChatSocketClient.disconnect()
+        mainHandler.removeCallbacks(pendingRetryTimer)
+        pendingRetryScheduled = false
     }
 
     private fun loadLevel() {
@@ -173,24 +198,33 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         }.start()
     }
 
-    private fun sendCode(code: String, onSuccess: () -> Unit) {
-        val view = view ?: return
-        val sendCodeButton = view.findViewById<ImageButton>(R.id.engineSendCodeButton)
+    private fun enqueuePendingCode(code: String) {
+        pendingCodes.addLast(
+            PendingCode(
+                code = code,
+                queuedAtMillis = System.currentTimeMillis()
+            )
+        )
+        refreshMixedActions()
+        processPendingCodesQueue()
+    }
+
+    private fun processPendingCodesQueue() {
+        if (isSendingPendingCode) return
+        if (pendingCodes.isEmpty()) return
+        val pending = pendingCodes.first()
+
         val session = UserPreferences.getEncounterSession(requireContext())
         val gameId = UserPreferences.getEncounterGameId(requireContext())
+        if (session.site.isBlank() || session.login.isBlank() || gameId.isBlank()) {
+            schedulePendingRetry()
+            refreshMixedActions()
+            return
+        }
+
         val state = lastState
-
-        if (session.site.isBlank() || session.login.isBlank()) {
-            Toast.makeText(requireContext(), R.string.engine_need_auth, Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (gameId.isBlank()) {
-            Toast.makeText(requireContext(), R.string.engine_need_game_id, Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        sendCodeButton.isEnabled = false
         val defaultWebViewUa = EncounterUserAgentProvider.get(requireContext())
+        isSendingPendingCode = true
 
         Thread {
             val result = EncounterApiClient.submitCode(
@@ -198,7 +232,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
                 gameIdRaw = gameId,
                 levelId = state?.levelId,
                 levelNumber = state?.levelNumber,
-                code = code,
+                code = pending.code,
                 guid = session.guid,
                 stoken = session.stoken,
                 atoken = session.atoken,
@@ -207,27 +241,55 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
 
             activity?.runOnUiThread {
                 if (!isAdded) return@runOnUiThread
-                sendCodeButton.isEnabled = true
+                isSendingPendingCode = false
 
                 result.onSuccess { submitResult ->
-                    onSuccess()
+                    if (pendingCodes.isNotEmpty()) {
+                        pendingCodes.removeFirst()
+                    }
+                    refreshMixedActions()
                     if (submitResult.state != null) {
                         renderState(submitResult.state)
                     } else {
                         loadLevel()
                     }
+                    processPendingCodesQueue()
                 }.onFailure { error ->
                     if (isSessionExpired(error)) {
                         showAuthExpiredMessage()
+                        Toast.makeText(
+                            requireContext(),
+                            getString(R.string.engine_code_send_error, error.message ?: getString(R.string.unknown_error)),
+                            Toast.LENGTH_LONG
+                        ).show()
+                        return@onFailure
                     }
+
+                    if (isLikelyNetworkIssue(error)) {
+                        schedulePendingRetry()
+                        refreshMixedActions()
+                        return@onFailure
+                    }
+
+                    if (pendingCodes.isNotEmpty()) {
+                        pendingCodes.removeFirst()
+                    }
+                    refreshMixedActions()
                     Toast.makeText(
                         requireContext(),
                         getString(R.string.engine_code_send_error, error.message ?: getString(R.string.unknown_error)),
                         Toast.LENGTH_LONG
                     ).show()
+                    processPendingCodesQueue()
                 }
             }
         }.start()
+    }
+
+    private fun schedulePendingRetry() {
+        if (pendingRetryScheduled) return
+        pendingRetryScheduled = true
+        mainHandler.postDelayed(pendingRetryTimer, 5000)
     }
 
     private fun renderState(state: EncounterApiClient.EngineLevelState) {
@@ -441,10 +503,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         root.findViewById<TextView>(R.id.engineTaskText).text = ""
         root.findViewById<LinearLayout>(R.id.engineHintsContainer).removeAllViews()
         root.findViewById<LinearLayout>(R.id.engineBonusesContainer).removeAllViews()
-        root.findViewById<LinearLayout>(R.id.engineMixedActionsContainer).apply {
-            removeAllViews()
-            addView(buildMixedActionRow(getString(R.string.engine_mixed_actions_empty), null, null))
-        }
+        refreshMixedActions()
         mainHandler.removeCallbacks(hintsTimer)
     }
 
@@ -512,7 +571,33 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         codeInput: EditText
     ) {
         container.removeAllViews()
-        if (items.isEmpty()) {
+        if (pendingCodes.isNotEmpty()) {
+            pendingCodes.forEachIndexed { index, pending ->
+                val status = if (index == 0 && pendingRetryScheduled) {
+                    getString(
+                        R.string.engine_pending_code_retry_template,
+                        formatTimeForPendingCode(pending.queuedAtMillis),
+                        pending.code
+                    )
+                } else {
+                    getString(
+                        R.string.engine_pending_code_waiting_template,
+                        formatTimeForPendingCode(pending.queuedAtMillis),
+                        pending.code
+                    )
+                }
+                container.addView(
+                    buildMixedActionRow(
+                        text = status,
+                        answerToFill = pending.code,
+                        codeInput = codeInput,
+                        textColor = 0xFF8E8E93.toInt()
+                    )
+                )
+            }
+        }
+
+        if (items.isEmpty() && pendingCodes.isEmpty()) {
             container.addView(buildMixedActionRow(getString(R.string.engine_mixed_actions_empty), null, null))
             return
         }
@@ -552,8 +637,19 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         return row
     }
 
+    private fun refreshMixedActions() {
+        val root = view ?: return
+        val mixedActionsContainer = root.findViewById<LinearLayout>(R.id.engineMixedActionsContainer)
+        val codeInput = root.findViewById<EditText>(R.id.engineCodeInput)
+        renderMixedActions(lastState?.mixedActions.orEmpty(), mixedActionsContainer, codeInput)
+    }
+
     private fun dp(value: Int): Int {
         return (value * resources.displayMetrics.density).toInt()
+    }
+
+    private fun formatTimeForPendingCode(millis: Long): String {
+        return SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(millis))
     }
 
     private fun buildBonusCompletedLine(bonus: EncounterApiClient.EngineBonus): String {
@@ -594,6 +690,27 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
     private fun isSessionExpired(error: Throwable): Boolean {
         val message = error.message.orEmpty()
         return message.contains("Сессия Encounter истекла", ignoreCase = true)
+    }
+
+    private fun isLikelyNetworkIssue(error: Throwable): Boolean {
+        val root = generateSequence(error) { it.cause }.lastOrNull() ?: error
+        if (
+            root is UnknownHostException ||
+            root is SocketTimeoutException ||
+            root is ConnectException ||
+            root is NoRouteToHostException ||
+            root is SocketException ||
+            root is IOException
+        ) {
+            return true
+        }
+        val message = root.message.orEmpty().lowercase(Locale.getDefault())
+        return message.contains("network") ||
+            message.contains("timeout") ||
+            message.contains("timed out") ||
+            message.contains("unable to resolve host") ||
+            message.contains("failed to connect") ||
+            message.contains("connection refused")
     }
 
     private fun makeClickableAuthLink(text: Spanned): Spanned {

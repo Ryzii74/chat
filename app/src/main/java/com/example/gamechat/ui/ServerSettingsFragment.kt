@@ -106,10 +106,10 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
         }
 
         val normalizedServerUrl = UserPreferences.getServerUrl(requireContext())
-        val adminPin = UserPreferences.getAdminPinForApi()
+        val adminToken = UserPreferences.getAdminToken(requireContext())
 
         Thread {
-            val listResult = ChatServerClient.getAllowedNicks(normalizedServerUrl, adminPin)
+            val listResult = ChatServerClient.getAllowedNicks(normalizedServerUrl, adminToken)
             activity?.runOnUiThread {
                 if (!isAdded) return@runOnUiThread
                 listResult.onSuccess { list ->
@@ -137,12 +137,12 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
 
             val serverUrl = UserPreferences.getServerUrl(requireContext())
             val room = UserPreferences.getChatRoom(requireContext())
-            val pin = UserPreferences.getAdminPinForApi()
+            val token = UserPreferences.getAdminToken(requireContext())
 
             saveButton.isEnabled = false
             Thread {
-                val switchRoomResult = ChatServerClient.switchActiveRoom(serverUrl, room, pin)
-                val setAllowedResult = ChatServerClient.setAllowedNicks(serverUrl, allowedNicks, pin)
+                val switchRoomResult = ChatServerClient.switchActiveRoom(serverUrl, room, token)
+                val setAllowedResult = ChatServerClient.setAllowedNicks(serverUrl, allowedNicks, token)
 
                 activity?.runOnUiThread {
                     if (!isAdded) return@runOnUiThread
@@ -175,14 +175,14 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             val targetRoom = chatRoomInput.text?.toString().orEmpty().trim().ifEmpty {
                 UserPreferences.getChatRoom(requireContext())
             }
-            val pin = UserPreferences.getAdminPinForApi()
+            val token = UserPreferences.getAdminToken(requireContext())
 
             clearButton.isEnabled = false
             Thread {
                 val result = ChatServerClient.clearRoomHistory(
                     serverBaseUrl = serverUrl,
                     room = targetRoom,
-                    adminPin = pin
+                    adminToken = token
                 )
                 activity?.runOnUiThread {
                     if (!isAdded) return@runOnUiThread

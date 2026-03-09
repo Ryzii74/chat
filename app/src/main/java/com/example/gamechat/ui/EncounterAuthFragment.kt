@@ -63,8 +63,10 @@ class EncounterAuthFragment : Fragment(R.layout.fragment_encounter_auth) {
         val resultText = view.findViewById<TextView>(R.id.encResultText)
 
         val session = UserPreferences.getEncounterSession(requireContext())
-        siteInput.setText(session.site.ifBlank { "https://world.en.cx" })
-        loginInput.setText(session.login)
+        val savedCredentials = UserPreferences.getEncounterCredentials(requireContext())
+        siteInput.setText(savedCredentials.site.ifBlank { "https://world.en.cx" })
+        loginInput.setText(savedCredentials.login)
+        passwordInput.setText(savedCredentials.password)
         if (showSavedInfo && session.login.isNotBlank()) {
             resultTitle.visibility = View.VISIBLE
             resultText.visibility = View.VISIBLE
@@ -100,6 +102,13 @@ class EncounterAuthFragment : Fragment(R.layout.fragment_encounter_auth) {
                 Toast.makeText(requireContext(), R.string.enc_fill_credentials, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+
+            UserPreferences.saveEncounterCredentials(
+                context = requireContext(),
+                site = site,
+                login = login,
+                password = password
+            )
 
             loginButton.isEnabled = false
             val defaultWebViewUa = EncounterUserAgentProvider.get(requireContext())
