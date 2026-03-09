@@ -1,0 +1,467 @@
+{
+  "activeRoom": "1",
+  "allowedNicks": [
+    "ryzi",
+    "ryzii"
+  ],
+  "rooms": {
+    "1": [
+      {
+        "room": "1",
+        "user": "test",
+        "message": "qwe",
+        "timestamp": "2026-03-08T21:39:56.279Z",
+        "id": "90e06b2b-c10f-44a8-9780-70bacdc76237"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "1",
+        "timestamp": "2026-03-08T21:40:21.564Z",
+        "id": "f8394aea-e44e-495a-84e0-f8f0ad55529e"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "2",
+        "timestamp": "2026-03-08T21:40:22.163Z",
+        "id": "038bb245-3189-4527-b98a-6b0987ac7319"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "3",
+        "timestamp": "2026-03-08T21:40:22.547Z",
+        "id": "084b0f2d-ad53-43c4-be64-8a5cbd1b2ca7"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "4",
+        "timestamp": "2026-03-08T21:40:22.828Z",
+        "id": "fe77c00d-6baf-4aca-bdb9-b61dbbebbd13"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "5",
+        "timestamp": "2026-03-08T21:40:23.122Z",
+        "id": "57275a15-569e-4b5e-8597-e3c68a7c4c64"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "6",
+        "timestamp": "2026-03-08T21:40:23.395Z",
+        "id": "e54270f1-43cb-496f-b99b-9783b93e5cba"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "7",
+        "timestamp": "2026-03-08T21:40:23.819Z",
+        "id": "45f0907d-7907-47d8-80e6-63726718857f"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "8",
+        "timestamp": "2026-03-08T21:40:24.515Z",
+        "id": "d7363ee1-0b92-4ccd-bbcd-ba1f7bd55954"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "9",
+        "timestamp": "2026-03-08T21:40:24.836Z",
+        "id": "14196384-0ad8-40e8-a30f-74b4353d2417"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "10",
+        "timestamp": "2026-03-08T21:40:26.400Z",
+        "id": "02774044-ae76-4e70-bd93-8d0e7e93df2f"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "11",
+        "timestamp": "2026-03-08T21:40:26.845Z",
+        "id": "f36acc31-f31e-49fb-8405-65527c954031"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "12",
+        "timestamp": "2026-03-08T21:40:27.238Z",
+        "id": "bf40fa87-563e-4478-851d-fb2d1d262e14"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "13",
+        "timestamp": "2026-03-08T21:40:27.661Z",
+        "id": "879a7385-7513-4b58-89ee-6c63dcd1c018"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "14",
+        "timestamp": "2026-03-08T21:40:28.029Z",
+        "id": "228a040d-874f-4231-bf2f-9d82942523d1"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "15",
+        "timestamp": "2026-03-08T21:40:28.509Z",
+        "id": "9259435c-7029-48eb-9c36-64d8a62811a1"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "16",
+        "timestamp": "2026-03-08T21:40:29.267Z",
+        "id": "c59c8629-a4b4-4ec5-9df5-d9c974e4e9c1"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "17",
+        "timestamp": "2026-03-08T21:40:29.779Z",
+        "id": "9fda9fbc-ab68-4c3a-82e4-61d86d66c2e5"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "18",
+        "timestamp": "2026-03-08T21:40:30.496Z",
+        "id": "c2ededbb-1689-416d-8ad7-64a9d9a68f99"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "19",
+        "timestamp": "2026-03-08T21:40:31.915Z",
+        "id": "2e504742-eac7-46f1-868d-714e94e0da3f"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "20",
+        "timestamp": "2026-03-08T21:40:32.685Z",
+        "id": "d09a603a-d561-4b65-b2e7-edc3f101cd84"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "21",
+        "timestamp": "2026-03-08T21:40:33.298Z",
+        "id": "b62cc91f-b2a9-4e70-b063-4fb9e9a2dc21"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "22",
+        "timestamp": "2026-03-08T21:40:34.022Z",
+        "id": "ccfc38f4-0a06-4e37-bdda-2fa1000d5f4d"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "23",
+        "timestamp": "2026-03-08T21:40:34.519Z",
+        "id": "e8eef328-797d-4322-900c-e488d365e802"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "24",
+        "timestamp": "2026-03-08T21:40:35.035Z",
+        "id": "d73e50ce-0308-425b-bb0c-0987258a69b5"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "25",
+        "timestamp": "2026-03-08T21:40:35.397Z",
+        "id": "fc0e6d51-4ead-46b8-8865-77f4c815e145"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "26",
+        "timestamp": "2026-03-08T21:40:35.788Z",
+        "id": "5b6149c7-c216-4f64-9a92-3b1f94128038"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "27",
+        "timestamp": "2026-03-08T21:40:36.825Z",
+        "id": "6e265f6a-3734-4296-8bd4-776bd3bb5c22"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "28",
+        "timestamp": "2026-03-08T21:40:37.826Z",
+        "id": "0af182b0-3c65-4172-ae03-603cf052fd57"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "29",
+        "timestamp": "2026-03-08T21:40:38.506Z",
+        "id": "a96f801c-70fb-41b2-9cc5-bc95af7c4580"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "30",
+        "timestamp": "2026-03-08T21:40:39.056Z",
+        "id": "6075563d-967f-4647-a54f-cce7940f0052"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "31",
+        "timestamp": "2026-03-08T21:40:39.411Z",
+        "id": "ac472015-baf4-4d6a-b052-71aff3a5e331"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "3",
+        "timestamp": "2026-03-08T21:40:39.801Z",
+        "id": "666d7523-78db-4bc2-84d6-0e522be90987"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "32",
+        "timestamp": "2026-03-08T21:40:41.450Z",
+        "id": "a551262d-e6c8-47ab-acc0-119f4942d0f3"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "33",
+        "timestamp": "2026-03-08T21:40:42.154Z",
+        "id": "3a847377-6c80-40d5-80dd-ee08dd5b0d08"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "34",
+        "timestamp": "2026-03-08T21:40:42.673Z",
+        "id": "c98c12f5-eada-4823-b5b3-95f8b1eb7d0c"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "35",
+        "timestamp": "2026-03-08T21:40:43.191Z",
+        "id": "7d0608d7-51fc-4885-a40d-97af434c2424"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "36",
+        "timestamp": "2026-03-08T21:40:43.553Z",
+        "id": "1d952d02-62d8-442e-a1fd-ee1943b39630"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "37",
+        "timestamp": "2026-03-08T21:40:44.110Z",
+        "id": "ec18a0b9-65fb-4c55-b518-f6cd5248d899"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "38",
+        "timestamp": "2026-03-08T21:40:44.462Z",
+        "id": "139a01bd-6b05-4306-b058-62ca275aa45c"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "39",
+        "timestamp": "2026-03-08T21:40:45.758Z",
+        "id": "3922168d-16e9-4df9-90cc-dfe6660b1963"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "40",
+        "timestamp": "2026-03-08T21:40:46.352Z",
+        "id": "e09c0cec-3ca1-4c05-86fb-6cf4c611e649"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "41",
+        "timestamp": "2026-03-08T21:40:46.871Z",
+        "id": "16e1179c-660b-4ad1-8ca7-1e0b81f83160"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "42",
+        "timestamp": "2026-03-08T21:40:47.316Z",
+        "id": "e07a5f30-9324-46a3-a501-e0f1723f4a1e"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "43",
+        "timestamp": "2026-03-08T21:40:47.767Z",
+        "id": "b7eba772-7d23-4544-82f3-94c4fd8d89b1"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "44",
+        "timestamp": "2026-03-08T21:40:48.465Z",
+        "id": "c19babc2-2e18-484e-9355-ff945de8522e"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "45",
+        "timestamp": "2026-03-08T21:40:49.340Z",
+        "id": "a3baddbc-432c-42f6-a6c8-54710fe36c13"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "46",
+        "timestamp": "2026-03-08T21:40:49.817Z",
+        "id": "2482ccb1-eb03-4ad0-9ab7-011a1dd16ac8"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "47",
+        "timestamp": "2026-03-08T21:40:50.448Z",
+        "id": "2dbfe542-5806-4441-baf2-ad96055c4f04"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "48",
+        "timestamp": "2026-03-08T21:40:51.194Z",
+        "id": "10cbb520-0f99-4db4-bd73-cdb46a63286c"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "49",
+        "timestamp": "2026-03-08T21:40:51.743Z",
+        "id": "53f4cf87-7a10-4bcc-b589-a28e6baa2002"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "50",
+        "timestamp": "2026-03-08T21:40:53.188Z",
+        "id": "a8366618-5b21-4d17-b3f1-c46aa5d51caf"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "51",
+        "timestamp": "2026-03-08T21:40:53.509Z",
+        "id": "668c633f-f29e-44b9-9f86-486f862d5a27"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "52",
+        "timestamp": "2026-03-08T21:40:54.689Z",
+        "id": "3dd02048-d0a3-4bc1-811f-991214406836"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "53",
+        "timestamp": "2026-03-08T21:40:55.692Z",
+        "id": "345e6d02-d7e5-4a7b-b252-589a7ef1693c"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "54",
+        "timestamp": "2026-03-08T21:40:56.194Z",
+        "id": "8a8103e6-57c5-41be-a3a1-81ac68eb5a4d"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "55",
+        "timestamp": "2026-03-08T21:40:56.688Z",
+        "id": "e520dd36-0de3-4f45-ae4c-87fde4c75e1d"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "57",
+        "timestamp": "2026-03-08T21:40:58.041Z",
+        "id": "5ec49e37-286d-4082-a821-ff7dba2be0c9"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "58",
+        "timestamp": "2026-03-08T21:40:58.582Z",
+        "id": "fc5d4885-c678-4326-87e3-f0a3bb73b420"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "59",
+        "timestamp": "2026-03-08T21:40:58.953Z",
+        "id": "e17c7dfe-5a82-4496-8809-b3ae7186569c"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "60",
+        "timestamp": "2026-03-08T21:40:59.808Z",
+        "id": "8bbec953-dd22-46d8-b714-4cf7f528a8ea"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "61",
+        "timestamp": "2026-03-08T21:47:21.662Z",
+        "id": "a7388fd5-2ede-48ca-9f08-76319b83340b"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "62",
+        "timestamp": "2026-03-08T21:47:23.070Z",
+        "id": "5fd5362a-2965-48ca-81c1-38c6558136ab"
+      },
+      {
+        "room": "1",
+        "user": "test",
+        "message": "eqwa",
+        "timestamp": "2026-03-08T22:00:37.185Z",
+        "id": "1e4a3e7d-c2cd-4097-96d2-d87fcbf7a077"
+      },
+      {
+        "id": "db1d559d-7e6a-4df2-b345-90537dbd1599",
+        "room": "1",
+        "user": "ryzi",
+        "message": "asd",
+        "timestamp": "2026-03-08T22:49:25.493Z"
+      }
+    ],
+    "general": []
+  }
+}

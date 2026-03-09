@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_nav_graph"
+    app:startDestination="@id/chatsFragment">
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.example.gamechat.ui.HomeFragment"
+        android:label="@string/menu_home" />
+
+    <fragment
+        android:id="@+id/chatsFragment"
+        android:name="com.example.gamechat.ui.ChatsFragment"
+        android:label="@string/menu_chats" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.example.gamechat.ui.SettingsFragment"
+        android:label="@string/menu_settings" />
+
+    <fragment
+        android:id="@+id/encounterAuthFragment"
+        android:name="com.example.gamechat.ui.EncounterAuthFragment"
+        android:label="@string/menu_encounter_auth" />
+
+    <fragment
+        android:id="@+id/serverSettingsFragment"
+        android:name="com.example.gamechat.ui.ServerSettingsFragment"
+        android:label="@string/menu_server_settings" />
+
+    <fragment
+        android:id="@+id/engineNativeFragment"
+        android:name="com.example.gamechat.ui.EngineNativeFragment"
+        android:label="@string/menu_engine_native" />
+
+</navigation>
