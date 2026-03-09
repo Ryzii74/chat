@@ -75,6 +75,7 @@ object EncounterApiClient {
         val totalSectorsCount: Int,
         val sectorsLeftToClose: Int?,
         val taskTexts: List<String>,
+        val messages: List<String>,
         val sectors: List<EngineSector>,
         val hints: List<EngineHint>,
         val bonuses: List<EngineBonus>,
@@ -595,6 +596,19 @@ object EncounterApiClient {
 
         val mixedActions = parseMixedActions(level)
         
+        // Парсим сообщения уровня
+        val messagesArray = level?.optJSONArray("Messages")
+        val messages = buildList {
+            if (messagesArray != null) {
+                for (i in 0 until messagesArray.length()) {
+                    val messageText = messagesArray.optString(i)
+                    if (messageText.isNotBlank()) {
+                        add(messageText)
+                    }
+                }
+            }
+        }
+        
         // Парсим время автоперехода из поля Timeout в Level
         val levelAutoTransitionTimeout = level?.optLong("Timeout")
             ?.takeIf { it > 0 }  // Если 0 или отрицательное - считаем что автоперехода нет
@@ -611,6 +625,7 @@ object EncounterApiClient {
             totalSectorsCount = totalSectorsCount,
             sectorsLeftToClose = sectorsLeftToClose,
             taskTexts = taskTexts,
+            messages = messages,
             sectors = sectors,
             hints = hints,
             bonuses = bonuses,

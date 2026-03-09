@@ -232,7 +232,6 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         navView.visibility = View.VISIBLE
         drawerToggle.isDrawerIndicatorEnabled = true
         drawerToggle.syncState()
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setHomeButtonEnabled(true)
 
         navView.setCheckedItem(R.id.engineFragment)

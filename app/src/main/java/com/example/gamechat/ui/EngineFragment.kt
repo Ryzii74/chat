@@ -335,6 +335,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         val root = view ?: return
 
         val header = root.findViewById<TextView>(R.id.engineLevelHeader)
+        val messagesContainer = root.findViewById<LinearLayout>(R.id.engineMessagesContainer)
         val autoTransitionTimerView = root.findViewById<TextView>(R.id.engineAutoTransitionTimer)
         val sectorsTitle = root.findViewById<TextView>(R.id.engineSectorsTitle)
         val sectorsContainer = root.findViewById<LinearLayout>(R.id.engineSectorsContainer)
@@ -351,6 +352,9 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         } else {
             getString(R.string.engine_level_header_no_name_template, levelNum, totalLevels)
         }
+        
+        // Обработка сообщений уровня
+        renderLevelMessages(state.messages, messagesContainer)
         
         // Обработка времени автоперехода
         if (state.levelAutoTransitionTimeout != null && state.levelAutoTransitionTimeout > 0) {
@@ -425,6 +429,30 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
                 }
                 val color = if (sector.isCompleted) 0xFF66BB6A.toInt() else null
                 container.addView(buildRow(text, textColor = color))
+        }
+    }
+
+    private fun renderLevelMessages(messages: List<String>, container: LinearLayout) {
+        container.removeAllViews()
+        
+        if (messages.isEmpty()) {
+            container.visibility = View.GONE
+            return
+        }
+        
+        container.visibility = View.VISIBLE
+        
+        messages.forEach { message ->
+            if (message.isNotBlank()) {
+                val textView = TextView(requireContext()).apply {
+                    text = toRichText(message)
+                    textSize = 14f
+                    setTextColor(0xFFFFFFFF.toInt()) // Белый цвет текста
+                    setPadding(0, 4, 0, 4)
+                    movementMethod = LinkMovementMethod.getInstance()
+                }
+                container.addView(textView)
+            }
         }
     }
 
