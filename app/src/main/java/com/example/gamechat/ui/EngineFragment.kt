@@ -73,6 +73,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
     private var pendingRetryScheduled: Boolean = false
     private var suppressNextLevelBroadcast = false
     private var host: Host? = null
+    private var lastHintsRefresh: Long = 0L  // Для предотвращения частых обновлений
 
     private data class PendingCode(
         val code: String,
@@ -81,7 +82,19 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
 
     private val hintsTimer = object : Runnable {
         override fun run() {
+            val shouldRefresh = checkForExpiredHints()
             renderHints(lastState?.hints.orEmpty())
+            
+            // Обновляем состояние при истечении таймера подсказок
+            if (shouldRefresh) {
+                val now = System.currentTimeMillis()
+                // Ограничиваем частоту обновлений (1 раз в 5 секунд)
+                if (now - lastHintsRefresh > 5000) {
+                    lastHintsRefresh = now
+                    loadLevel()
+                }
+            }
+            
             if (view != null && shouldKeepHintsTimerRunning()) {
                 mainHandler.postDelayed(this, 1000)
             }
@@ -1010,6 +1023,36 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
             hint.penaltyHelpState == 0 && 
             (hint.remainingSeconds ?: 0) > 0
         }
+    }
+    
+    private fun checkForExpiredHints(): Boolean {
+        val hints = lastState?.hints.orEmpty()
+        val elapsed = ((System.currentTimeMillis() - hintsBaseTimestampMillis) / 1000L).toInt().coerceAtLeast(0)
+        
+        // Проверяем обычные подсказки
+        hintsBaseSeconds.forEachIndexed { _, baseSeconds ->
+            if (baseSeconds != null && baseSeconds > 0) {
+                val currentRemain = (baseSeconds - elapsed).coerceAtLeast(0)
+                if (baseSeconds > 0 && currentRemain == 0) {
+                    return true  // Таймер истек
+                }
+            }
+        }
+        
+        // Проверяем штрафные подсказки
+        hints.forEach { hint ->
+            if (hint.isPenalty && hint.penaltyHelpState == 0) {
+                val remainSeconds = hint.remainingSeconds ?: 0
+                if (remainSeconds > 0) {
+                    val currentRemain = (remainSeconds - elapsed).coerceAtLeast(0)
+                    if (remainSeconds > 0 && currentRemain == 0) {
+                        return true  // Штрафная подсказка стала доступной
+                    }
+                }
+            }
+        }
+        
+        return false
     }
     
     private fun formatTime(seconds: Int): String {
