@@ -118,6 +118,16 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             clearButton.isEnabled = roomsWithHistory.isNotEmpty()
         }
 
+        fun applyRoomsFallback() {
+            val fromInput = chatRoomInput.text?.toString().orEmpty().trim()
+            val currentRoom = fromInput.ifBlank { UserPreferences.getChatRoom(requireContext()) }
+            roomsWithHistory.clear()
+            if (currentRoom.isNotBlank()) {
+                roomsWithHistory.add(currentRoom)
+            }
+            renderRoomsWithHistory()
+        }
+
         clearRoomSelectorInput.setOnClickListener {
             clearRoomSelectorInput.showDropDown()
         }
@@ -158,8 +168,7 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                     roomsWithHistory.addAll(rooms.distinct())
                     renderRoomsWithHistory()
                 }.onFailure {
-                    roomsWithHistory.clear()
-                    renderRoomsWithHistory()
+                    applyRoomsFallback()
                 }
             }
         }.start()
@@ -244,8 +253,7 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                             roomsWithHistory.addAll(rooms.distinct())
                             renderRoomsWithHistory()
                         }.onFailure {
-                            roomsWithHistory.clear()
-                            renderRoomsWithHistory()
+                            applyRoomsFallback()
                         }
                     }.onFailure { error ->
                         Toast.makeText(
