@@ -75,6 +75,7 @@ function serializeState() {
   }
   return {
     activeRoom,
+    gameId: GAME_ID,
     allowedNicks,
     rooms,
   };
@@ -102,6 +103,11 @@ function hydrateState(state) {
   if (!allowedNicks.includes(ALWAYS_ALLOWED_NICK)) {
     allowedNicks.push(ALWAYS_ALLOWED_NICK);
   }
+
+  const restoredGameId = String(state && state.gameId ? state.gameId : "").trim();
+  if (restoredGameId || !GAME_ID) {
+    GAME_ID = restoredGameId;
+  }
   getMessagesByRoom(activeRoom);
 }
 
@@ -118,7 +124,7 @@ async function loadState() {
   await fs.promises.mkdir(DATA_DIR, { recursive: true });
   await fs.promises.mkdir(MEDIA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) {
-    hydrateState({ activeRoom: DEFAULT_ROOM, rooms: {} });
+    hydrateState({ activeRoom: DEFAULT_ROOM, rooms: {}, gameId: GAME_ID });
     persistenceReady = true;
     await persistState();
     return;
@@ -129,7 +135,7 @@ async function loadState() {
     const parsed = JSON.parse(raw);
     hydrateState(parsed);
   } catch {
-    hydrateState({ activeRoom: DEFAULT_ROOM, rooms: {} });
+    hydrateState({ activeRoom: DEFAULT_ROOM, rooms: {}, gameId: GAME_ID });
   }
   persistenceReady = true;
 }
@@ -483,6 +489,7 @@ const server = http.createServer(async (req, res) => {
       const body = await parseJsonBody(req);
       const gameId = String(body.gameId || "").trim();
       GAME_ID = gameId;
+      await persistState();
       sendJson(res, 200, { status: "ok", gameId: GAME_ID });
     } catch (error) {
       sendJson(res, 400, { error: error.message || "Bad request" });
