@@ -78,6 +78,7 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
         val room = UserPreferences.getChatRoom(requireContext())
         root.findViewById<TextView>(R.id.chatDisplayName).text =
             getString(R.string.chat_display_name_with_room, name, room)
+        activity?.title = "${getString(R.string.menu_chats)} • Комната $room • Вы $name"
     }
 
     private fun setupMessagesList(root: View) {

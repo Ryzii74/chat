@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Игровой чат</string>
     <string name="menu_home">Главная</string>
-    <string name="menu_chats">Чаты</string>
+    <string name="menu_chats">Чат</string>
     <string name="menu_solver">Решатель</string>
     <string name="menu_solver_auto">Auto решатель</string>
     <string name="menu_engine">Движок</string>
