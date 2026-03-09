@@ -72,7 +72,8 @@ object EncounterApiClient {
         val sectors: List<EngineSector>,
         val hints: List<EngineHint>,
         val bonuses: List<EngineBonus>,
-        val mixedActions: List<EngineMixedAction>
+        val mixedActions: List<EngineMixedAction>,
+        val levelAutoTransitionTimeout: Long? = null
     )
 
     data class EngineMixedAction(
@@ -541,6 +542,10 @@ object EncounterApiClient {
         }
 
         val mixedActions = parseMixedActions(level)
+        
+        // Парсим время автоперехода из поля Timeout в Level
+        val levelAutoTransitionTimeout = level?.optLong("Timeout")
+            ?.takeIf { it > 0 }  // Если 0 или отрицательное - считаем что автоперехода нет
 
         return EngineLevelState(
             gameId = gameId,
@@ -557,7 +562,8 @@ object EncounterApiClient {
             sectors = sectors,
             hints = hints,
             bonuses = bonuses,
-            mixedActions = mixedActions
+            mixedActions = mixedActions,
+            levelAutoTransitionTimeout = levelAutoTransitionTimeout
         )
     }
 

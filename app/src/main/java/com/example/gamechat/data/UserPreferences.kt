@@ -19,6 +19,7 @@ object UserPreferences {
     private const val KEY_ENC_LAST_PASSWORD = "enc_last_password"
     private const val KEY_SOLVER_MODE_ALIAS = "solver_mode_alias"
     private const val KEY_SOLVER_AUTO_ENABLED = "solver_auto_enabled"
+    private const val KEY_SOLVER_HISTORY = "solver_history"
     private const val DEFAULT_CHAT_NICK = "Игрок"
     private const val DEFAULT_SERVER_URL = "http://10.0.2.2:8080"
     private const val DEFAULT_CHAT_ROOM = "general"
@@ -189,6 +190,58 @@ object UserPreferences {
     fun setSolverAutoEnabled(context: Context, enabled: Boolean) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         prefs.edit().putBoolean(KEY_SOLVER_AUTO_ENABLED, enabled).apply()
+    }
+
+    fun saveSolverHistory(context: Context, messages: List<com.example.gamechat.ui.chat.ChatMessage>) {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val limitedMessages = messages.takeLast(50) // Сохраняем только последние 50 сообщений
+        
+        val jsonArray = org.json.JSONArray()
+        for (message in limitedMessages) {
+            val jsonObject = org.json.JSONObject()
+            jsonObject.put("id", message.id ?: "")
+            jsonObject.put("senderName", message.senderName ?: "")
+            jsonObject.put("text", message.text)
+            jsonObject.put("isOutgoing", message.isOutgoing)
+            jsonObject.put("deliveryState", message.deliveryState.name)
+            jsonObject.put("timeLabel", message.timeLabel)
+            jsonObject.put("imageUrl", message.imageUrl ?: "")
+            jsonArray.put(jsonObject)
+        }
+        
+        prefs.edit().putString(KEY_SOLVER_HISTORY, jsonArray.toString()).apply()
+    }
+
+    fun getSolverHistory(context: Context): List<com.example.gamechat.ui.chat.ChatMessage> {
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val jsonString = prefs.getString(KEY_SOLVER_HISTORY, "") ?: ""
+        
+        if (jsonString.isBlank()) {
+            return emptyList()
+        }
+        
+        return try {
+            val jsonArray = org.json.JSONArray(jsonString)
+            val messages = mutableListOf<com.example.gamechat.ui.chat.ChatMessage>()
+            
+            for (i in 0 until jsonArray.length()) {
+                val jsonObject = jsonArray.getJSONObject(i)
+                val message = com.example.gamechat.ui.chat.ChatMessage(
+                    id = jsonObject.getString("id").takeIf { it.isNotEmpty() },
+                    senderName = jsonObject.getString("senderName").takeIf { it.isNotEmpty() },
+                    text = jsonObject.getString("text"),
+                    isOutgoing = jsonObject.getBoolean("isOutgoing"),
+                    deliveryState = com.example.gamechat.ui.chat.DeliveryState.valueOf(jsonObject.getString("deliveryState")),
+                    timeLabel = jsonObject.getString("timeLabel"),
+                    imageUrl = jsonObject.getString("imageUrl").takeIf { it.isNotEmpty() }
+                )
+                messages.add(message)
+            }
+            
+            messages
+        } catch (e: Exception) {
+            emptyList()
+        }
     }
 
     private fun normalizeServerBaseUrl(url: String): String {

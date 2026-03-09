@@ -165,7 +165,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         return super.onPrepareOptionsMenu(menu)
     }
 
-    private fun openScreen(fragment: Fragment, title: String, screenMenuId: Int? = null) {
+    fun openScreen(fragment: Fragment, title: String, screenMenuId: Int? = null) {
         currentScreenMenuId = screenMenuId
         supportActionBar?.title = title
         supportFragmentManager

@@ -1,5 +1,9 @@
 package com.example.gamechat.ui.chat
 
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -14,7 +18,8 @@ import com.example.gamechat.R
 
 class ChatMessageAdapter(
     private val items: List<ChatMessage>,
-    private val onMessageLongPress: (ChatMessage) -> Unit
+    private val onMessageLongPress: (ChatMessage) -> Unit,
+    private val onAnswerClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<ChatMessageAdapter.MessageViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -25,7 +30,7 @@ class ChatMessageAdapter(
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         val item = items[position]
-        holder.bind(item)
+        holder.bind(item, onAnswerClick)
         holder.itemView.setOnLongClickListener {
             onMessageLongPress(item)
             true
@@ -43,12 +48,24 @@ class ChatMessageAdapter(
         private val messageTime: TextView = view.findViewById(R.id.messageTime)
         private val messageStatus: TextView = view.findViewById(R.id.messageStatus)
 
-        fun bind(item: ChatMessage) {
-            messageText.text = item.text
+        fun bind(item: ChatMessage, onAnswerClick: ((String) -> Unit)? = null) {
+            val processedText = processClickableText(item.text, onAnswerClick)
+            if (processedText.first != null) {
+                // Есть кликабельный текст
+                messageText.text = processedText.first
+                messageText.movementMethod = LinkMovementMethod.getInstance()
+            } else {
+                messageText.text = item.text
+                messageText.movementMethod = null
+            }
+            
             messageTime.text = item.timeLabel
             bindImage(item.imageUrl)
             messageText.visibility = if (item.text.isBlank()) View.GONE else View.VISIBLE
             bindSender(item.senderName)
+
+            // Увеличиваем межстрочное расстояние для лучшей читаемости
+            messageText.setLineSpacing(dp(4).toFloat(), 1.2f)
 
             val params = bubbleContainer.layoutParams as FrameLayout.LayoutParams
             if (item.isOutgoing) {
@@ -97,6 +114,54 @@ class ChatMessageAdapter(
         private fun dp(value: Int): Int {
             val density = itemView.resources.displayMetrics.density
             return (value * density).toInt()
+        }
+
+        private fun processClickableText(text: String, onAnswerClick: ((String) -> Unit)? = null): Pair<SpannableStringBuilder?, List<String>> {
+            if (!text.contains("[CLICKABLE]")) {
+                return Pair(null, emptyList())
+            }
+
+            val spannableBuilder = SpannableStringBuilder()
+            val clickableAnswers = mutableListOf<String>()
+            val parts = text.split("[CLICKABLE]")
+            
+            spannableBuilder.append(parts[0]) // Текст до первого маркера
+            
+            for (i in 1 until parts.size) {
+                val part = parts[i]
+                val endIndex = part.indexOf("[/CLICKABLE]")
+                if (endIndex != -1) {
+                    val clickableText = part.substring(0, endIndex).trim()
+                    val remainingText = part.substring(endIndex + "[/CLICKABLE]".length)
+                    
+                    if (clickableText.isNotEmpty()) {
+                        clickableAnswers.add(clickableText)
+                        
+                        val startIndex = spannableBuilder.length
+                        spannableBuilder.append(clickableText)
+                        val endIndexSpan = spannableBuilder.length
+                        
+                        val clickableSpan = object : ClickableSpan() {
+                            override fun onClick(widget: View) {
+                                onAnswerClick?.invoke(clickableText)
+                            }
+                        }
+                        
+                        spannableBuilder.setSpan(
+                            clickableSpan,
+                            startIndex,
+                            endIndexSpan,
+                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                        )
+                    }
+                    
+                    spannableBuilder.append(remainingText)
+                } else {
+                    spannableBuilder.append(part)
+                }
+            }
+            
+            return Pair(spannableBuilder, clickableAnswers)
         }
 
         private fun bindImage(imageUrl: String?) {

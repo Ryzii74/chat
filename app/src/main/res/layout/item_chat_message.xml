@@ -2,8 +2,8 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingTop="4dp"
-    android:paddingBottom="4dp">
+    android:paddingTop="6dp"
+    android:paddingBottom="6dp">
 
     <LinearLayout
         android:id="@+id/bubbleContainer"
@@ -32,9 +32,9 @@
             android:layout_height="wrap_content"
             android:maxWidth="280dp"
             android:paddingLeft="14dp"
-            android:paddingTop="2dp"
+            android:paddingTop="4dp"
             android:paddingRight="14dp"
-            android:paddingBottom="2dp"
+            android:paddingBottom="4dp"
             android:textColor="?attr/colorOnSurface"
             android:textSize="16sp" />
 

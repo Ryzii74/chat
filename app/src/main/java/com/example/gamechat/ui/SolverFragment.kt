@@ -1,6 +1,10 @@
 package com.example.gamechat.ui
 
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
 import android.view.KeyEvent
 import android.view.View
 import android.widget.Button
@@ -11,8 +15,10 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.example.gamechat.MainActivity
 import com.example.gamechat.R
 import com.example.gamechat.data.UserPreferences
+import com.example.gamechat.ui.EngineFragment
 import com.example.gamechat.ui.chat.ChatMessage
 import com.example.gamechat.ui.chat.ChatMessageAdapter
 import com.example.gamechat.ui.chat.DeliveryState
@@ -38,6 +44,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        loadSavedHistory()
         setupMessages(view)
         setupComposer(view)
     }
@@ -47,11 +54,23 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         autoModeEnabled = UserPreferences.isSolverAutoEnabled(requireContext())
     }
 
+    override fun onPause() {
+        super.onPause()
+        saveSolverHistory()
+    }
+
     private fun setupMessages(root: View) {
         val recycler = root.findViewById<RecyclerView>(R.id.solverMessagesRecycler)
-        adapter = ChatMessageAdapter(messages) { }
+        adapter = ChatMessageAdapter(messages, { }, { answer ->
+            navigateToEngine(answer)
+        })
         recycler.layoutManager = LinearLayoutManager(requireContext())
         recycler.adapter = adapter
+        
+        // Если есть сообщения, прокручиваем вниз
+        if (messages.isNotEmpty()) {
+            recycler.scrollToPosition(messages.lastIndex)
+        }
     }
 
     private fun setupComposer(root: View) {
@@ -97,6 +116,8 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             input.text?.clear()
             pendingResultLines.clear()
             updateLoadMoreButton(loadMoreButton)
+            // Сохраняем историю после добавления пользовательского сообщения
+            saveSolverHistory()
             Thread {
                 val autoEnabledNow = UserPreferences.isSolverAutoEnabled(requireContext())
                 autoModeEnabled = autoEnabledNow
@@ -280,16 +301,19 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     }
 
     private fun addSystemMessage(text: String) {
+        val formattedText = makeAnswersClickable(text)
         messages.add(
             ChatMessage(
                 senderName = "Решатель",
-                text = text,
+                text = formattedText,
                 isOutgoing = false,
                 deliveryState = DeliveryState.NONE,
                 timeLabel = formatNowTime()
             )
         )
         adapter.notifyItemInserted(messages.lastIndex)
+        // Автоматически сохраняем историю после каждого нового сообщения
+        saveSolverHistory()
     }
 
     private fun showResultWithPagination(rawResult: String, loadMoreButton: Button) {
@@ -352,5 +376,44 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
 
     private fun formatNowTime(): String {
         return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+    }
+
+    private fun makeAnswersClickable(text: String): String {
+        // Добавляем специальные маркеры для кликабельных строк
+        val lines = text.split("\n")
+        val clickableLines = mutableListOf<String>()
+        
+        for (line in lines) {
+            val trimmedLine = line.trim()
+            if (trimmedLine.isNotEmpty() && 
+                !trimmedLine.startsWith("[") && 
+                !trimmedLine.endsWith("]") &&
+                !trimmedLine.contains(":")) {
+                // Это потенциальный ответ - делаем его кликабельным
+                clickableLines.add("[CLICKABLE]$trimmedLine[/CLICKABLE]")
+            } else {
+                clickableLines.add(line)
+            }
+        }
+        return clickableLines.joinToString("\n")
+    }
+
+    private fun navigateToEngine(answer: String) {
+        val activity = requireActivity() as? MainActivity
+        if (activity != null) {
+            // Переключаемся на экран движка с передачей ответа
+            val engineFragment = EngineFragment.newInstanceWithPendingCode(answer)
+            activity.openScreen(engineFragment, getString(R.string.menu_engine), R.id.engineFragment)
+        }
+    }
+
+    private fun loadSavedHistory() {
+        val savedMessages = UserPreferences.getSolverHistory(requireContext())
+        messages.clear()
+        messages.addAll(savedMessages)
+    }
+
+    private fun saveSolverHistory() {
+        UserPreferences.saveSolverHistory(requireContext(), messages)
     }
 }

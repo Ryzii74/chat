@@ -82,9 +82,9 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
 
     private fun setupMessagesList(root: View) {
         val recycler = root.findViewById<RecyclerView>(R.id.messagesRecycler)
-        adapter = ChatMessageAdapter(messages) { message ->
+        adapter = ChatMessageAdapter(messages, { message ->
             showMessageActions(message)
-        }
+        }, null)
         recycler.layoutManager = LinearLayoutManager(requireContext())
         recycler.adapter = adapter
     }

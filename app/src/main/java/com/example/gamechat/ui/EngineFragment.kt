@@ -43,6 +43,18 @@ import java.util.Date
 import java.util.Locale
 
 class EngineFragment : Fragment(R.layout.fragment_engine) {
+    companion object {
+        private const val ARG_PENDING_CODE = "pending_code"
+        
+        fun newInstanceWithPendingCode(text: String): EngineFragment {
+            val fragment = EngineFragment()
+            val bundle = Bundle()
+            bundle.putString(ARG_PENDING_CODE, text)
+            fragment.arguments = bundle
+            return fragment
+        }
+    }
+    
     interface Host {
         fun openEncounterAuthFromEngine()
     }
@@ -51,6 +63,8 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
     private var lastState: EncounterApiClient.EngineLevelState? = null
     private var hintsBaseSeconds: List<Int?> = emptyList()
     private var hintsBaseTimestampMillis: Long = 0L
+    private var autoTransitionBaseTimestampMillis: Long = 0L
+    private var autoTransitionTimeoutSeconds: Long? = null
     private var sectorsExpanded: Boolean = true
     private var mixedActionsExpanded: Boolean = false
     private val expandedBonuses = mutableSetOf<Int>()
@@ -69,6 +83,15 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         override fun run() {
             renderHints(lastState?.hints.orEmpty())
             if (view != null && hintsBaseSeconds.any { (it ?: 0) > 0 }) {
+                mainHandler.postDelayed(this, 1000)
+            }
+        }
+    }
+    
+    private val autoTransitionTimer = object : Runnable {
+        override fun run() {
+            renderAutoTransitionTimer()
+            if (view != null && autoTransitionTimeoutSeconds != null) {
                 mainHandler.postDelayed(this, 1000)
             }
         }
@@ -98,6 +121,18 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         val codeInput = view.findViewById<EditText>(R.id.engineCodeInput)
         val sendCodeButton = view.findViewById<ImageButton>(R.id.engineSendCodeButton)
         val mixedActionsScroll = view.findViewById<ScrollView>(R.id.engineMixedActionsScroll)
+        
+        // Проверяем, есть ли переданные данные для заполнения поля
+        val pendingCode = arguments?.getString(ARG_PENDING_CODE)
+        if (!pendingCode.isNullOrBlank()) {
+            // Извлекаем кликабельные строки из текста решателя
+            val cleanText = extractAnswersFromSolverText(pendingCode)
+            codeInput.setText(cleanText)
+            codeInput.requestFocus()
+            codeInput.setSelection(codeInput.text?.length ?: 0)
+            // Очищаем arguments после обработки
+            arguments?.remove(ARG_PENDING_CODE)
+        }
         val mixedActionsExpandButton = view.findViewById<ImageButton>(R.id.engineMixedActionsExpandButton)
         mixedActionsExpandButton.setOnClickListener {
             mixedActionsExpanded = !mixedActionsExpanded
@@ -123,6 +158,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
     override fun onDestroyView() {
         mainHandler.removeCallbacks(hintsTimer)
         mainHandler.removeCallbacks(pendingRetryTimer)
+        mainHandler.removeCallbacks(autoTransitionTimer)
         super.onDestroyView()
     }
 
@@ -299,6 +335,7 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
         val root = view ?: return
 
         val header = root.findViewById<TextView>(R.id.engineLevelHeader)
+        val autoTransitionTimerView = root.findViewById<TextView>(R.id.engineAutoTransitionTimer)
         val sectorsTitle = root.findViewById<TextView>(R.id.engineSectorsTitle)
         val sectorsContainer = root.findViewById<LinearLayout>(R.id.engineSectorsContainer)
         val taskText = root.findViewById<TextView>(R.id.engineTaskText)
@@ -313,6 +350,21 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
             getString(R.string.engine_level_header_template, levelNum, totalLevels, levelName)
         } else {
             getString(R.string.engine_level_header_no_name_template, levelNum, totalLevels)
+        }
+        
+        // Обработка времени автоперехода
+        if (state.levelAutoTransitionTimeout != null && state.levelAutoTransitionTimeout > 0) {
+            autoTransitionTimeoutSeconds = state.levelAutoTransitionTimeout
+            autoTransitionBaseTimestampMillis = System.currentTimeMillis()
+            autoTransitionTimerView.visibility = View.VISIBLE
+            renderAutoTransitionTimer()
+            mainHandler.removeCallbacks(autoTransitionTimer)
+            mainHandler.post(autoTransitionTimer)
+        } else {
+            autoTransitionTimeoutSeconds = null
+            autoTransitionTimerView.visibility = View.VISIBLE
+            autoTransitionTimerView.text = "Автоперехода нет"
+            mainHandler.removeCallbacks(autoTransitionTimer)
         }
 
         val required = state.requiredSectorsCount?.toString() ?: "?"
@@ -818,5 +870,72 @@ class EngineFragment : Fragment(R.layout.fragment_engine) {
             button.setImageResource(android.R.drawable.arrow_up_float)
             button.contentDescription = getString(R.string.engine_mixed_actions_expand)
         }
+    }
+    
+    private fun renderAutoTransitionTimer() {
+        val root = view ?: return
+        val autoTransitionTimerView = root.findViewById<TextView>(R.id.engineAutoTransitionTimer)
+        val timeoutSeconds = autoTransitionTimeoutSeconds ?: return
+        
+        val elapsedMillis = System.currentTimeMillis() - autoTransitionBaseTimestampMillis
+        val elapsedSeconds = elapsedMillis / 1000
+        val remainingSeconds = (timeoutSeconds - elapsedSeconds).coerceAtLeast(0)
+        
+        if (remainingSeconds <= 0) {
+            autoTransitionTimerView.text = "Автоперехода нет"
+            autoTransitionTimeoutSeconds = null
+            mainHandler.removeCallbacks(autoTransitionTimer)
+            return
+        }
+        
+        val hours = remainingSeconds / 3600
+        val minutes = (remainingSeconds % 3600) / 60
+        val seconds = remainingSeconds % 60
+        
+        val timeText = buildString {
+            append("Автопереход через ")
+            if (hours > 0) {
+                append("$hours час")
+                when {
+                    hours % 10 == 1L && hours % 100 != 11L -> append("")
+                    hours % 10 in 2..4 && hours % 100 !in 12..14 -> append("а")
+                    else -> append("ов")
+                }
+                if (minutes > 0 || seconds > 0) append(" ")
+            }
+            if (minutes > 0) {
+                append("$minutes минут")
+                when {
+                    minutes % 10 == 1L && minutes % 100 != 11L -> append("у")
+                    minutes % 10 in 2..4 && minutes % 100 !in 12..14 -> append("ы")
+                    else -> append("")
+                }
+                if (seconds > 0) append(" ")
+            }
+            if (seconds > 0 || (hours == 0L && minutes == 0L)) {
+                append("$seconds секунд")
+                when {
+                    seconds % 10 == 1L && seconds % 100 != 11L -> append("у")
+                    seconds % 10 in 2..4 && seconds % 100 !in 12..14 -> append("ы")
+                    else -> append("")
+                }
+            }
+        }
+        
+        autoTransitionTimerView.text = timeText
+    }
+    
+    private fun extractAnswersFromSolverText(text: String): String {
+        // Оставляем только первый кликабельный ответ из списка
+        val clickablePattern = "\\[CLICKABLE\\](.*?)\\[/CLICKABLE\\]".toRegex()
+        val matches = clickablePattern.findAll(text)
+        return matches.firstOrNull()?.groupValues?.get(1)?.trim() ?: text.split("\\n")
+            .firstOrNull { line -> 
+                val trimmed = line.trim()
+                trimmed.isNotEmpty() && 
+                !trimmed.startsWith("[") && 
+                !trimmed.endsWith("]") &&
+                !trimmed.contains(":")
+            }?.trim() ?: ""
     }
 }
