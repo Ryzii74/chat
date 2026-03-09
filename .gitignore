@@ -1,11 +1,36 @@
-*.iml
-.gradle
-/local.properties
-.idea   
+# macOS / IDE
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+.idea/
+*.iml
+
+# Android / Gradle
+.gradle/
 local.properties
-server/node_modules
+**/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.hprof
+
+# Signing files
+*.jks
+*.keystore
+
+# Node.js
+node_modules/
+server/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Server runtime data
+server/data/
+server/*.log
+
+# Temporary / patch files
+*.orig
+*.rej
+*.swp
