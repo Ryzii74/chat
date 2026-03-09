@@ -104,9 +104,12 @@ function hydrateState(state) {
     allowedNicks.push(ALWAYS_ALLOWED_NICK);
   }
 
-  const restoredGameId = String(state && state.gameId ? state.gameId : "").trim();
-  if (restoredGameId || !GAME_ID) {
-    GAME_ID = restoredGameId;
+  const stateHasGameId =
+    state &&
+    typeof state === "object" &&
+    Object.prototype.hasOwnProperty.call(state, "gameId");
+  if (stateHasGameId) {
+    GAME_ID = String(state.gameId || "").trim();
   }
   getMessagesByRoom(activeRoom);
 }
