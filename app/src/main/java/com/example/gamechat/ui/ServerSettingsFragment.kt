@@ -246,7 +246,6 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                         ).show()
                     }
                 }
-                }
             }.start()
         }
 
