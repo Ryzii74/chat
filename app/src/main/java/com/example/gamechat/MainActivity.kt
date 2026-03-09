@@ -1,7 +1,9 @@
 package com.example.gamechat
 
 import android.os.Bundle
+import android.view.GestureDetector
 import android.view.Menu
+import android.view.MotionEvent
 import android.view.View
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.SwitchCompat
@@ -21,14 +23,34 @@ import com.example.gamechat.ui.ServerSettingsFragment
 import com.example.gamechat.ui.SettingsFragment
 import com.example.gamechat.ui.SolverFragment
 import com.google.android.material.navigation.NavigationView
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFragment.Host {
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navView: NavigationView
     private lateinit var toolbar: com.google.android.material.appbar.MaterialToolbar
     private lateinit var drawerToggle: ActionBarDrawerToggle
+    private lateinit var gestureDetector: GestureDetector
     private var isUnlocked = false
     private var currentScreenMenuId: Int? = null
+    
+    // Типы анимации переходов
+    enum class TransitionAnimation {
+        NONE,
+        SLIDE_LEFT_TO_RIGHT, // Свайп вправо - предыдущий экран
+        SLIDE_RIGHT_TO_LEFT  // Свайп влево - следующий экран
+    }
+    
+    // Порядок экранов для навигации свайпом
+    private val screenOrder = listOf(
+        R.id.encounterAuthFragment,
+        R.id.chatsFragment,
+        R.id.solverFragment,
+        R.id.engineFragment,
+        R.id.engineNativeFragment,
+        R.id.settingsFragment,
+        R.id.serverSettingsFragment
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,6 +61,9 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         drawerLayout = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
         updateAdminMenuVisibility()
+        
+        // Инициализируем GestureDetector для свайпов
+        gestureDetector = GestureDetector(this, SwipeGestureListener())
 
         drawerToggle = ActionBarDrawerToggle(
             this,
@@ -166,12 +191,38 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
     }
 
     fun openScreen(fragment: Fragment, title: String, screenMenuId: Int? = null) {
+        openScreen(fragment, title, screenMenuId, TransitionAnimation.NONE)
+    }
+    
+    fun openScreen(fragment: Fragment, title: String, screenMenuId: Int?, animation: TransitionAnimation) {
         currentScreenMenuId = screenMenuId
         supportActionBar?.title = title
-        supportFragmentManager
-            .beginTransaction()
+        
+        val transaction = supportFragmentManager.beginTransaction()
+        
+        // Применяем анимацию в зависимости от типа перехода
+        when (animation) {
+            TransitionAnimation.SLIDE_LEFT_TO_RIGHT -> {
+                transaction.setCustomAnimations(
+                    R.anim.slide_in_left,
+                    R.anim.slide_out_right
+                )
+            }
+            TransitionAnimation.SLIDE_RIGHT_TO_LEFT -> {
+                transaction.setCustomAnimations(
+                    R.anim.slide_in_right,
+                    R.anim.slide_out_left
+                )
+            }
+            TransitionAnimation.NONE -> {
+                // Без анимации
+            }
+        }
+        
+        transaction
             .replace(R.id.fragment_container, fragment)
             .commit()
+            
         invalidateOptionsMenu()
     }
 
@@ -240,5 +291,121 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
             getString(R.string.menu_engine),
             R.id.engineFragment
         )
+    }
+    
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        // Обрабатываем свайпы только если приложение разблокировано и drawer закрыт
+        if (isUnlocked && ev != null && !drawerLayout.isDrawerOpen(GravityCompat.START)) {
+            gestureDetector.onTouchEvent(ev)
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+    
+    private inner class SwipeGestureListener : GestureDetector.SimpleOnGestureListener() {
+        private val minSwipeDistance = 100
+        private val maxSwipeOffPath = 250
+        private val minSwipeVelocity = 200
+        
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            if (e1 == null || !isUnlocked || currentScreenMenuId == null) return false
+            
+            // Проверяем что это горизонтальный свайп
+            if (abs(e1.y - e2.y) > maxSwipeOffPath) return false
+            if (abs(velocityX) < minSwipeVelocity) return false
+            if (abs(e1.x - e2.x) < minSwipeDistance) return false
+            
+            // Определяем направление свайпа
+            if (e1.x - e2.x > 0) {
+                // Свайп влево - следующий экран
+                navigateToNextScreen()
+            } else {
+                // Свайп вправо - предыдущий экран
+                navigateToPreviousScreen()
+            }
+            
+            return true
+        }
+    }
+    
+    private fun navigateToNextScreen() {
+        val currentIndex = getAvailableScreens().indexOf(currentScreenMenuId)
+        if (currentIndex >= 0 && currentIndex < getAvailableScreens().size - 1) {
+            val nextScreenId = getAvailableScreens()[currentIndex + 1]
+            navigateToScreen(nextScreenId, TransitionAnimation.SLIDE_RIGHT_TO_LEFT)
+        }
+    }
+    
+    private fun navigateToPreviousScreen() {
+        val currentIndex = getAvailableScreens().indexOf(currentScreenMenuId)
+        if (currentIndex > 0) {
+            val previousScreenId = getAvailableScreens()[currentIndex - 1]
+            navigateToScreen(previousScreenId, TransitionAnimation.SLIDE_LEFT_TO_RIGHT)
+        }
+    }
+    
+    private fun getAvailableScreens(): List<Int> {
+        return screenOrder.filter { screenId ->
+            // Исключаем serverSettingsFragment если пользователь не админ
+            if (screenId == R.id.serverSettingsFragment) {
+                UserPreferences.isAdmin(this)
+            } else {
+                true
+            }
+        }
+    }
+    
+    private fun navigateToScreen(screenId: Int, animation: TransitionAnimation = TransitionAnimation.NONE) {
+        when (screenId) {
+            R.id.encounterAuthFragment -> {
+                navView.setCheckedItem(R.id.encounterAuthFragment)
+                openScreen(
+                    EncounterAuthFragment.newInstance(showSavedInfo = true, focusPassword = false),
+                    getString(R.string.menu_encounter_auth),
+                    R.id.encounterAuthFragment,
+                    animation
+                )
+            }
+            R.id.chatsFragment -> {
+                navView.setCheckedItem(R.id.chatsFragment)
+                openScreen(ChatsFragment(), getString(R.string.menu_chats), R.id.chatsFragment, animation)
+            }
+            R.id.solverFragment -> {
+                navView.setCheckedItem(R.id.solverFragment)
+                openScreen(SolverFragment(), getString(R.string.menu_solver), R.id.solverFragment, animation)
+            }
+            R.id.engineFragment -> {
+                navView.setCheckedItem(R.id.engineFragment)
+                openScreen(EngineFragment(), getString(R.string.menu_engine), R.id.engineFragment, animation)
+            }
+            R.id.engineNativeFragment -> {
+                navView.setCheckedItem(R.id.engineNativeFragment)
+                openScreen(
+                    EngineNativeFragment(),
+                    getString(R.string.menu_engine_native),
+                    R.id.engineNativeFragment,
+                    animation
+                )
+            }
+            R.id.settingsFragment -> {
+                navView.setCheckedItem(R.id.settingsFragment)
+                openScreen(SettingsFragment(), getString(R.string.menu_settings), R.id.settingsFragment, animation)
+            }
+            R.id.serverSettingsFragment -> {
+                if (UserPreferences.isAdmin(this)) {
+                    navView.setCheckedItem(R.id.serverSettingsFragment)
+                    openScreen(
+                        ServerSettingsFragment(),
+                        getString(R.string.menu_server_settings),
+                        R.id.serverSettingsFragment,
+                        animation
+                    )
+                }
+            }
+        }
     }
 }

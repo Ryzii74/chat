@@ -10,6 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="start"
+        android:minWidth="120dp"
         android:background="@drawable/bg_chat_bubble_incoming"
         android:orientation="vertical">
 
@@ -17,6 +18,7 @@
             android:id="@+id/messageSender"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minWidth="100dp"
             android:maxWidth="280dp"
             android:paddingLeft="14dp"
             android:paddingTop="8dp"
@@ -30,6 +32,7 @@
             android:id="@+id/messageText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:minWidth="100dp"
             android:maxWidth="280dp"
             android:paddingLeft="14dp"
             android:paddingTop="4dp"
