@@ -94,11 +94,9 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
     }
 
     private fun renderName(root: View) {
-        val name = UserPreferences.getChatNick(requireContext())
-        val room = UserPreferences.getChatRoom(requireContext())
-        root.findViewById<TextView>(R.id.chatDisplayName).text =
-            getString(R.string.chat_display_name_with_room, name, room)
-        activity?.title = "${getString(R.string.menu_chats)} • Комната $room • Вы $name"
+        // Скрываем информацию о пользователе и комнате
+        root.findViewById<TextView>(R.id.chatDisplayName).visibility = View.GONE
+        activity?.title = getString(R.string.menu_chats)
     }
 
     private fun setupMessagesList(root: View) {
