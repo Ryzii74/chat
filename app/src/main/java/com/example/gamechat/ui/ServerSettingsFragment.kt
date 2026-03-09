@@ -60,6 +60,29 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
         chatRoomInput.setText(UserPreferences.getChatRoom(requireContext()))
         encGameIdInput.setText(UserPreferences.getEncounterGameId(requireContext()))
 
+        fun persistAllowedNicks() {
+            val serverUrl = UserPreferences.getServerUrl(requireContext())
+            val token = UserPreferences.getAdminToken(requireContext())
+            addAllowedNickButton.isEnabled = false
+            Thread {
+                val result = ChatServerClient.setAllowedNicks(serverUrl, allowedNicks, token)
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
+                    addAllowedNickButton.isEnabled = true
+                    result.onFailure { error ->
+                        Toast.makeText(
+                            requireContext(),
+                            getString(
+                                R.string.server_settings_save_error,
+                                error.message ?: getString(R.string.unknown_error)
+                            ),
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            }.start()
+        }
+
         fun renderAllowedNicks() {
             allowedNicksContainer.removeAllViews()
             if (allowedNicks.isEmpty()) {
@@ -92,6 +115,7 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                     setOnClickListener {
                         allowedNicks.remove(nick)
                         renderAllowedNicks()
+                        persistAllowedNicks()
                     }
                 }
 
@@ -144,6 +168,7 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                 allowedNicks.add(nick)
                 allowedNicks.sort()
                 renderAllowedNicks()
+                persistAllowedNicks()
             }
             allowedNickInput.text?.clear()
         }
@@ -193,13 +218,12 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             saveButton.isEnabled = false
             Thread {
                 val switchRoomResult = ChatServerClient.switchActiveRoom(serverUrl, room, token)
-                val setAllowedResult = ChatServerClient.setAllowedNicks(serverUrl, allowedNicks, token)
 
                 activity?.runOnUiThread {
                     if (!isAdded) return@runOnUiThread
                     saveButton.isEnabled = true
 
-                    if (switchRoomResult.isSuccess && setAllowedResult.isSuccess) {
+                    if (switchRoomResult.isSuccess) {
                         Toast.makeText(
                             requireContext(),
                             getString(R.string.server_settings_saved_room, room),
@@ -207,7 +231,6 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                         ).show()
                     } else {
                         val error = switchRoomResult.exceptionOrNull()
-                            ?: setAllowedResult.exceptionOrNull()
                         Toast.makeText(
                             requireContext(),
                             getString(
