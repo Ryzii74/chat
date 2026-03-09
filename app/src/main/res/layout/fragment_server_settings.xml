@@ -123,6 +123,21 @@
         android:layout_marginTop="16dp"
         android:text="@string/settings_save_server" />
 
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/clearRoomSelectorLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/settings_clear_room_selector_hint">
+
+        <AutoCompleteTextView
+            android:id="@+id/clearRoomSelectorInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="none"
+            android:maxLines="1" />
+    </com.google.android.material.textfield.TextInputLayout>
+
     <Button
         android:id="@+id/clearRoomHistoryButton"
         android:layout_width="wrap_content"

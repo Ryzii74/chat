@@ -242,6 +242,7 @@ const server = http.createServer(async (req, res) => {
         "/admin/switch-room",
         "/admin/clear-room",
         "/admin/allowed-nicks",
+        "/admin/rooms-with-history",
       ],
       activeRoom,
     });
@@ -429,6 +430,25 @@ const server = http.createServer(async (req, res) => {
     }
 
     sendJson(res, 405, { error: "Method not allowed" });
+    return;
+  }
+
+  if (requestPath === "/admin/rooms-with-history") {
+    if (method !== "GET") {
+      sendJson(res, 405, { error: "Method not allowed" });
+      return;
+    }
+    const adminToken = String(req.headers["x-admin-token"] || "").trim();
+    if (!isValidAdminToken(adminToken)) {
+      sendJson(res, 403, { error: "Admin access denied" });
+      return;
+    }
+
+    const rooms = Array.from(roomMessages.entries())
+      .filter(([, messages]) => Array.isArray(messages) && messages.length > 0)
+      .map(([room]) => normalizeRoom(room))
+      .sort((a, b) => a.localeCompare(b, "ru", { sensitivity: "base" }));
+    sendJson(res, 200, { rooms });
     return;
   }
 

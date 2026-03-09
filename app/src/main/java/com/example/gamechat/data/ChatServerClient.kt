@@ -15,6 +15,7 @@ object ChatServerClient {
     private const val SWITCH_ROOM_PATH = "admin/switch-room"
     private const val CLEAR_ROOM_PATH = "admin/clear-room"
     private const val ALLOWED_NICKS_PATH = "admin/allowed-nicks"
+    private const val ROOMS_WITH_HISTORY_PATH = "admin/rooms-with-history"
     private const val APP_ACCESS_CHECK_PATH = "app-access/check"
     private const val ENGINE_LEVEL_CHANGED_PATH = "engine/level-changed"
     private const val MEDIA_PATH = "media"
@@ -365,6 +366,36 @@ object ChatServerClient {
         }
     }
 
+    fun getRoomsWithHistory(serverBaseUrl: String, adminToken: String): Result<List<String>> {
+        return runCatching {
+            val url = buildRoomsWithHistoryUrl(serverBaseUrl)
+            val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 10_000
+                readTimeout = 10_000
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("X-Admin-Token", adminToken)
+            }
+            try {
+                val statusCode = connection.responseCode
+                val responseBody = readResponse(connection)
+                if (statusCode !in 200..299) {
+                    throw IllegalStateException("HTTP $statusCode: $responseBody")
+                }
+                val array = JSONObject(responseBody.ifBlank { "{}" }).optJSONArray("rooms")
+                if (array == null) return@runCatching emptyList()
+                buildList {
+                    for (i in 0 until array.length()) {
+                        val room = array.optString(i).trim()
+                        if (room.isNotBlank()) add(room)
+                    }
+                }
+            } finally {
+                connection.disconnect()
+            }
+        }
+    }
+
     fun checkAppAccess(serverBaseUrl: String, nick: String): Result<Boolean> {
         return runCatching {
             val base = normalizeBaseUrl(serverBaseUrl)
@@ -482,6 +513,11 @@ object ChatServerClient {
     private fun buildAllowedNicksUrl(serverBaseUrl: String): String {
         val base = normalizeBaseUrl(serverBaseUrl)
         return "$base/$ALLOWED_NICKS_PATH"
+    }
+
+    private fun buildRoomsWithHistoryUrl(serverBaseUrl: String): String {
+        val base = normalizeBaseUrl(serverBaseUrl)
+        return "$base/$ROOMS_WITH_HISTORY_PATH"
     }
 
     private fun buildEngineLevelChangedUrl(serverBaseUrl: String): String {

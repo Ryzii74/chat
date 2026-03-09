@@ -2,6 +2,8 @@ package com.example.gamechat.ui
 
 import android.os.Bundle
 import android.view.View
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -15,6 +17,7 @@ import com.google.android.material.textfield.TextInputLayout
 
 class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
     private val allowedNicks = mutableListOf<String>()
+    private val roomsWithHistory = mutableListOf<String>()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -30,6 +33,8 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
         val serverUrlInput = view.findViewById<TextInputEditText>(R.id.serverUrlInput)
         val chatRoomInput = view.findViewById<TextInputEditText>(R.id.chatRoomInput)
         val encGameIdInput = view.findViewById<TextInputEditText>(R.id.encGameIdInput)
+        val clearRoomSelectorLayout = view.findViewById<TextInputLayout>(R.id.clearRoomSelectorLayout)
+        val clearRoomSelectorInput = view.findViewById<AutoCompleteTextView>(R.id.clearRoomSelectorInput)
         val saveButton = view.findViewById<Button>(R.id.saveServerSettingsButton)
         val clearButton = view.findViewById<Button>(R.id.clearRoomHistoryButton)
 
@@ -43,6 +48,8 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             addAllowedNickButton.visibility = View.GONE
             allowedNickInput.visibility = View.GONE
             allowedNicksContainer.visibility = View.GONE
+            clearRoomSelectorLayout.visibility = View.GONE
+            clearRoomSelectorInput.visibility = View.GONE
             saveButton.visibility = View.GONE
             clearButton.visibility = View.GONE
             return
@@ -94,6 +101,32 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
             }
         }
 
+        fun renderRoomsWithHistory() {
+            val adapter = ArrayAdapter(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                roomsWithHistory
+            )
+            clearRoomSelectorInput.setAdapter(adapter)
+            val selected = clearRoomSelectorInput.text?.toString().orEmpty().trim()
+            val nextSelected = when {
+                selected.isNotBlank() && roomsWithHistory.contains(selected) -> selected
+                roomsWithHistory.isNotEmpty() -> roomsWithHistory.first()
+                else -> ""
+            }
+            clearRoomSelectorInput.setText(nextSelected, false)
+            clearButton.isEnabled = roomsWithHistory.isNotEmpty()
+        }
+
+        clearRoomSelectorInput.setOnClickListener {
+            clearRoomSelectorInput.showDropDown()
+        }
+        clearRoomSelectorInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                clearRoomSelectorInput.showDropDown()
+            }
+        }
+
         addAllowedNickButton.setOnClickListener {
             val nick = allowedNickInput.text?.toString().orEmpty().trim().lowercase()
             if (nick.isBlank()) return@setOnClickListener
@@ -110,6 +143,7 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
 
         Thread {
             val listResult = ChatServerClient.getAllowedNicks(normalizedServerUrl, adminToken)
+            val roomsResult = ChatServerClient.getRoomsWithHistory(normalizedServerUrl, adminToken)
             activity?.runOnUiThread {
                 if (!isAdded) return@runOnUiThread
                 listResult.onSuccess { list ->
@@ -118,6 +152,14 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                     renderAllowedNicks()
                 }.onFailure {
                     renderAllowedNicks()
+                }
+                roomsResult.onSuccess { rooms ->
+                    roomsWithHistory.clear()
+                    roomsWithHistory.addAll(rooms.distinct())
+                    renderRoomsWithHistory()
+                }.onFailure {
+                    roomsWithHistory.clear()
+                    renderRoomsWithHistory()
                 }
             }
         }.start()
@@ -172,8 +214,10 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
 
         clearButton.setOnClickListener {
             val serverUrl = UserPreferences.getServerUrl(requireContext())
-            val targetRoom = chatRoomInput.text?.toString().orEmpty().trim().ifEmpty {
-                UserPreferences.getChatRoom(requireContext())
+            val targetRoom = clearRoomSelectorInput.text?.toString().orEmpty().trim()
+            if (targetRoom.isBlank()) {
+                Toast.makeText(requireContext(), R.string.room_history_room_not_selected, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
             val token = UserPreferences.getAdminToken(requireContext())
 
@@ -194,6 +238,15 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                             getString(R.string.room_history_cleared, targetRoom),
                             Toast.LENGTH_SHORT
                         ).show()
+                        val roomsResult = ChatServerClient.getRoomsWithHistory(serverUrl, token)
+                        roomsResult.onSuccess { rooms ->
+                            roomsWithHistory.clear()
+                            roomsWithHistory.addAll(rooms.distinct())
+                            renderRoomsWithHistory()
+                        }.onFailure {
+                            roomsWithHistory.clear()
+                            renderRoomsWithHistory()
+                        }
                     }.onFailure { error ->
                         Toast.makeText(
                             requireContext(),
@@ -203,6 +256,9 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
                             ),
                             Toast.LENGTH_LONG
                         ).show()
+                    }
+                    if (roomsWithHistory.isEmpty()) {
+                        clearButton.isEnabled = false
                     }
                 }
             }.start()

@@ -17,6 +17,7 @@
     <string name="settings_enc_game_id_hint">ID игры Encounter</string>
     <string name="settings_save_server">Сохранить настройки сервера</string>
     <string name="settings_clear_room_history">Очистить историю комнаты</string>
+    <string name="settings_clear_room_selector_hint">Комната для очистки истории</string>
     <string name="settings_allowed_nicks_title">Разрешенные ники</string>
     <string name="settings_allowed_nick_hint">Ник Encounter</string>
     <string name="settings_allowed_nick_add">Добавить</string>
@@ -28,6 +29,7 @@
     <string name="server_settings_save_error">Ошибка сохранения настроек сервера: %1$s</string>
     <string name="room_history_cleared">История комнаты очищена: %1$s</string>
     <string name="room_history_clear_error">Не удалось очистить историю комнаты: %1$s</string>
+    <string name="room_history_room_not_selected">Выберите комнату из списка</string>
     <string name="admin_section_title">Доступ администратора</string>
     <string name="admin_pin_hint">PIN администратора</string>
     <string name="admin_login">Войти как администратор</string>
