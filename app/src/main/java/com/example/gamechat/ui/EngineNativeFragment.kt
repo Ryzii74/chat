@@ -17,6 +17,7 @@ import androidx.fragment.app.Fragment
 import com.example.gamechat.R
 import com.example.gamechat.data.EncounterUserAgentProvider
 import com.example.gamechat.data.UserPreferences
+import java.net.URI
 
 class EngineNativeFragment : Fragment(R.layout.fragment_engine_native) {
     private var webView: WebView? = null
@@ -51,7 +52,8 @@ class EngineNativeFragment : Fragment(R.layout.fragment_engine_native) {
             engineUrl = engineUrl,
             guid = session.guid,
             stoken = session.stoken,
-            atoken = session.atoken
+            atoken = session.atoken,
+            userAgent = EncounterUserAgentProvider.get(requireContext())
         )
     }
 
@@ -134,30 +136,59 @@ class EngineNativeFragment : Fragment(R.layout.fragment_engine_native) {
         engineUrl: String,
         guid: String?,
         stoken: String?,
-        atoken: String?
+        atoken: String?,
+        userAgent: String
     ) {
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
         cookieManager.setAcceptThirdPartyCookies(webView, true)
 
-        val entries = buildList<Pair<String, String>> {
-            addCookie(this, siteBaseUrl, "GUID", guid)
-            addCookie(this, siteBaseUrl, "stoken", stoken)
-            addCookie(this, siteBaseUrl, "atoken", atoken)
-            addCookie(this, engineUrl, "GUID", guid)
-            addCookie(this, engineUrl, "stoken", stoken)
-            addCookie(this, engineUrl, "atoken", atoken)
+        val host = runCatching { URI(siteBaseUrl).host.orEmpty().trim() }.getOrNull().orEmpty()
+        val baseUrls = buildList {
+            add(siteBaseUrl)
+            add(engineUrl)
+            if (host.isNotBlank()) {
+                add("https://$host/")
+                add("http://$host/")
+            }
+        }.distinct()
+
+        // Drop stale auth cookies first to avoid collisions with previous sessions.
+        baseUrls.forEach { url ->
+            clearCookie(cookieManager, url, "GUID")
+            clearCookie(cookieManager, url, "stoken")
+            clearCookie(cookieManager, url, "atoken")
         }
 
+        val entries = buildList<Pair<String, String>> {
+            baseUrls.forEach { url ->
+                addCookie(this, url, "GUID", guid)
+                addCookie(this, url, "stoken", stoken)
+                addCookie(this, url, "atoken", atoken)
+            }
+        }
+
+        val authCookieHeader = buildAuthCookieHeader(guid, stoken, atoken)
         if (entries.isEmpty()) {
-            webView.loadUrl(engineUrl)
+            webView.loadUrl(
+                engineUrl,
+                mapOf(
+                    "User-Agent" to userAgent
+                )
+            )
             return
         }
 
         fun applyAt(index: Int) {
             if (index >= entries.size) {
                 cookieManager.flush()
-                webView.loadUrl(engineUrl)
+                val headers = mutableMapOf(
+                    "User-Agent" to userAgent
+                )
+                if (authCookieHeader.isNotBlank()) {
+                    headers["Cookie"] = authCookieHeader
+                }
+                webView.loadUrl(engineUrl, headers)
                 return
             }
             val (url, cookie) = entries[index]
@@ -168,10 +199,22 @@ class EngineNativeFragment : Fragment(R.layout.fragment_engine_native) {
         applyAt(0)
     }
 
+    private fun buildAuthCookieHeader(guid: String?, stoken: String?, atoken: String?): String {
+        val parts = mutableListOf<String>()
+        if (!guid.isNullOrBlank()) parts.add("GUID=${guid.trim()}")
+        if (!stoken.isNullOrBlank()) parts.add("stoken=${stoken.trim()}")
+        if (!atoken.isNullOrBlank()) parts.add("atoken=${atoken.trim()}")
+        return parts.joinToString("; ")
+    }
+
+    private fun clearCookie(cookieManager: CookieManager, url: String, name: String) {
+        cookieManager.setCookie(url, "$name=; Path=/; Max-Age=0")
+    }
+
     private fun addCookie(target: MutableList<Pair<String, String>>, url: String, name: String, value: String?) {
         val safe = value?.trim().orEmpty()
         if (safe.isBlank()) return
-        target.add(url to "$name=$safe; Path=/")
+        target.add(url to "$name=$safe; Path=/; SameSite=None; Secure")
     }
 
     private fun showError(errorText: TextView, message: String) {
