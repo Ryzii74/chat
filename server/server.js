@@ -19,10 +19,22 @@ const ADMIN_TOKEN_TTL_MS = Number(process.env.ADMIN_TOKEN_TTL_MS || 7 * 24 * 60 
 
 const roomMessages = new Map();
 let activeRoom = DEFAULT_ROOM;
-const ALWAYS_ALLOWED_NICK = "ryzi";
-let allowedNicks = [ALWAYS_ALLOWED_NICK];
+const ALWAYS_ALLOWED_NICKS = ["ryzi", "ryzii"];
+let allowedNicks = [...ALWAYS_ALLOWED_NICKS];
 let persistenceReady = false;
 const adminTokens = new Map();
+
+function ensureAlwaysAllowedNicks(list) {
+  const normalized = Array.isArray(list)
+    ? [...new Set(list.map((nick) => String(nick || "").trim().toLowerCase()).filter(Boolean))]
+    : [];
+  for (const fixedNick of ALWAYS_ALLOWED_NICKS) {
+    if (!normalized.includes(fixedNick)) {
+      normalized.push(fixedNick);
+    }
+  }
+  return normalized;
+}
 
 function sendJson(res, statusCode, payload) {
   const body = JSON.stringify(payload);
@@ -97,12 +109,7 @@ function hydrateState(state) {
 
   const restoredActiveRoom = normalizeRoom(state && state.activeRoom);
   activeRoom = restoredActiveRoom || DEFAULT_ROOM;
-  allowedNicks = Array.isArray(state && state.allowedNicks)
-    ? [...new Set(state.allowedNicks.map((nick) => String(nick || "").trim().toLowerCase()).filter(Boolean))]
-    : [];
-  if (!allowedNicks.includes(ALWAYS_ALLOWED_NICK)) {
-    allowedNicks.push(ALWAYS_ALLOWED_NICK);
-  }
+  allowedNicks = ensureAlwaysAllowedNicks(state && state.allowedNicks);
 
   const stateHasGameId =
     state &&
@@ -310,7 +317,7 @@ const server = http.createServer(async (req, res) => {
     }
     const nick = String(url.searchParams.get("nick") || "").trim().toLowerCase();
     const allowed =
-      nick === ALWAYS_ALLOWED_NICK ||
+      ALWAYS_ALLOWED_NICKS.includes(nick) ||
       allowedNicks.length === 0 ||
       (nick && allowedNicks.includes(nick));
     sendJson(res, 200, { allowed, nick });
@@ -442,10 +449,7 @@ const server = http.createServer(async (req, res) => {
       try {
         const body = await parseJsonBody(req);
         const rawList = Array.isArray(body.nicks) ? body.nicks : [];
-        allowedNicks = [...new Set(rawList.map((nick) => String(nick || "").trim().toLowerCase()).filter(Boolean))];
-        if (!allowedNicks.includes(ALWAYS_ALLOWED_NICK)) {
-          allowedNicks.push(ALWAYS_ALLOWED_NICK);
-        }
+        allowedNicks = ensureAlwaysAllowedNicks(rawList);
         await persistState();
         sendJson(res, 200, { status: "ok", nicks: allowedNicks });
       } catch (error) {

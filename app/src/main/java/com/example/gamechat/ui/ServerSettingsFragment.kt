@@ -18,6 +18,7 @@ import com.google.android.material.textfield.TextInputLayout
 class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
     private val allowedNicks = mutableListOf<String>()
     private val roomsWithHistory = mutableListOf<String>()
+    private val protectedNicks = setOf("ryzi", "ryzii")
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -112,10 +113,15 @@ class ServerSettingsFragment : Fragment(R.layout.fragment_server_settings) {
 
                 val removeButton = Button(requireContext()).apply {
                     text = getString(R.string.settings_allowed_nick_remove)
-                    setOnClickListener {
-                        allowedNicks.remove(nick)
-                        renderAllowedNicks()
-                        persistAllowedNicks()
+                    val isProtectedNick = protectedNicks.contains(nick.lowercase())
+                    isEnabled = !isProtectedNick
+                    alpha = if (isProtectedNick) 0.5f else 1f
+                    if (!isProtectedNick) {
+                        setOnClickListener {
+                            allowedNicks.remove(nick)
+                            renderAllowedNicks()
+                            persistAllowedNicks()
+                        }
                     }
                 }
 
