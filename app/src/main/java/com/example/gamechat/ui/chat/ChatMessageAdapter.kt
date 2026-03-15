@@ -19,7 +19,8 @@ import com.example.gamechat.R
 class ChatMessageAdapter(
     private val items: List<ChatMessage>,
     private val onMessageLongPress: (ChatMessage) -> Unit,
-    private val onAnswerClick: ((String) -> Unit)? = null
+    private val onAnswerClick: ((String) -> Unit)? = null,
+    private val onImageClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<ChatMessageAdapter.MessageViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -30,7 +31,7 @@ class ChatMessageAdapter(
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         val item = items[position]
-        holder.bind(item, onAnswerClick)
+        holder.bind(item, onAnswerClick, onImageClick)
         holder.itemView.setOnLongClickListener {
             onMessageLongPress(item)
             true
@@ -48,7 +49,11 @@ class ChatMessageAdapter(
         private val messageTime: TextView = view.findViewById(R.id.messageTime)
         private val messageStatus: TextView = view.findViewById(R.id.messageStatus)
 
-        fun bind(item: ChatMessage, onAnswerClick: ((String) -> Unit)? = null) {
+        fun bind(
+            item: ChatMessage,
+            onAnswerClick: ((String) -> Unit)? = null,
+            onImageClick: ((String) -> Unit)? = null
+        ) {
             val processedText = processClickableText(item.text, onAnswerClick)
             if (processedText.first != null) {
                 // Есть кликабельный текст
@@ -60,7 +65,7 @@ class ChatMessageAdapter(
             }
             
             messageTime.text = item.timeLabel
-            bindImage(item.imageUrl)
+            bindImage(item.imageUrl, onImageClick)
             messageText.visibility = if (item.text.isBlank()) View.GONE else View.VISIBLE
             bindSender(item.senderName)
 
@@ -164,16 +169,18 @@ class ChatMessageAdapter(
             return Pair(spannableBuilder, clickableAnswers)
         }
 
-        private fun bindImage(imageUrl: String?) {
+        private fun bindImage(imageUrl: String?, onImageClick: ((String) -> Unit)? = null) {
             if (imageUrl.isNullOrBlank()) {
                 messageImage.visibility = View.GONE
                 messageImage.setImageDrawable(null)
+                messageImage.setOnClickListener(null)
                 return
             }
             messageImage.visibility = View.VISIBLE
             messageImage.load(imageUrl) {
                 crossfade(true)
             }
+            messageImage.setOnClickListener { onImageClick?.invoke(imageUrl) }
         }
 
         private fun bindOutgoingStatus(state: DeliveryState, retryAttempt: Int = 0) {

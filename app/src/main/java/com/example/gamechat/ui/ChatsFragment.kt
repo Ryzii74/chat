@@ -1,16 +1,20 @@
 package com.example.gamechat.ui
 
 import android.Manifest
+import android.app.Dialog
 import android.app.AlertDialog
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.content.pm.PackageManager
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +33,7 @@ import com.example.gamechat.data.UserPreferences
 import com.example.gamechat.ui.chat.ChatMessage
 import com.example.gamechat.ui.chat.ChatMessageAdapter
 import com.example.gamechat.ui.chat.DeliveryState
+import coil.load
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.text.SimpleDateFormat
@@ -120,9 +125,32 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
         val recycler = root.findViewById<RecyclerView>(R.id.messagesRecycler)
         adapter = ChatMessageAdapter(messages, { message ->
             showMessageActions(message)
-        }, null)
+        }, null) { imageUrl ->
+            showImageFullscreen(imageUrl)
+        }
         recycler.layoutManager = LinearLayoutManager(requireContext())
         recycler.adapter = adapter
+    }
+
+    private fun showImageFullscreen(imageUrl: String) {
+        if (!isAdded) return
+
+        val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        val imageView = ImageView(requireContext()).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor(Color.BLACK)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            load(imageUrl) {
+                crossfade(true)
+            }
+            setOnClickListener { dialog.dismiss() }
+        }
+
+        dialog.setContentView(imageView)
+        dialog.show()
     }
 
     private fun loadHistory(showLoading: Boolean) {
