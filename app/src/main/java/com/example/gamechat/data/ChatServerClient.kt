@@ -1,5 +1,6 @@
 package com.example.gamechat.data
 
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -10,6 +11,7 @@ import java.net.URLEncoder
 import java.net.URL
 
 object ChatServerClient {
+    private const val TAG = "ChatServerClient"
     private const val MESSAGES_PATH = "messages"
     private const val ADMIN_LOGIN_PATH = "admin/login"
     private const val ADMIN_LOGOUT_PATH = "admin/logout"
@@ -402,6 +404,7 @@ object ChatServerClient {
             val base = normalizeBaseUrl(serverBaseUrl)
             val encoded = URLEncoder.encode(nick.trim(), "UTF-8")
             val url = "$base/$APP_ACCESS_CHECK_PATH?nick=$encoded"
+            Log.d(TAG, "checkAppAccess request: url='$url'")
             val connection = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 10_000
@@ -412,9 +415,12 @@ object ChatServerClient {
                 val statusCode = connection.responseCode
                 val responseBody = readResponse(connection)
                 if (statusCode !in 200..299) {
+                    Log.e(TAG, "checkAppAccess failed: status=$statusCode, body='$responseBody'")
                     throw IllegalStateException("HTTP $statusCode: $responseBody")
                 }
-                JSONObject(responseBody.ifBlank { "{}" }).optBoolean("allowed", false)
+                val allowed = JSONObject(responseBody.ifBlank { "{}" }).optBoolean("allowed", false)
+                Log.d(TAG, "checkAppAccess response: status=$statusCode, allowed=$allowed, body='$responseBody'")
+                allowed
             } finally {
                 connection.disconnect()
             }

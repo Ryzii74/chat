@@ -1,6 +1,7 @@
 package com.example.gamechat
 
 import android.os.Bundle
+import android.util.Log
 import android.view.GestureDetector
 import android.view.Menu
 import android.view.MotionEvent
@@ -27,6 +28,10 @@ import com.google.android.material.navigation.NavigationView
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFragment.Host {
+    private companion object {
+        const val TAG = "MainActivityAuth"
+    }
+
     private lateinit var drawerLayout: DrawerLayout
     private lateinit var navView: NavigationView
     private lateinit var toolbar: com.google.android.material.appbar.MaterialToolbar
@@ -156,6 +161,10 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
     }
 
     override fun onEncounterAuthorized(info: EncounterApiClient.UserInfo) {
+        Log.d(
+            TAG,
+            "Encounter authorized: login='${info.login}', site='${info.site}', userId='${info.userId.orEmpty()}'"
+        )
         UserPreferences.saveEncounterSession(
             context = this,
             site = info.site,
@@ -252,13 +261,21 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
 
     private fun checkEncounterAccessAndContinue(nick: String) {
         val serverUrl = UserPreferences.getServerUrl(this)
+        Log.d(TAG, "Checking app access: nick='${nick.trim()}', server='$serverUrl'")
         Thread {
             val accessResult = ChatServerClient.checkAppAccess(serverUrl, nick)
             runOnUiThread {
                 val allowed = accessResult.getOrNull() ?: false
+                val error = accessResult.exceptionOrNull()
+                Log.d(
+                    TAG,
+                    "App access result: allowed=$allowed, error='${error?.message.orEmpty()}'"
+                )
                 if (allowed) {
+                    Log.d(TAG, "Access granted, unlocking app UI")
                     unlockAppUi()
                 } else {
+                    Log.w(TAG, "Access denied, opening NotAvailable screen")
                     lockAppUi()
                     openScreen(
                         NotAvailableFragment(),

@@ -3,6 +3,7 @@ package com.example.gamechat.ui
 import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Button
@@ -29,6 +30,7 @@ class EncounterAuthFragment : Fragment(R.layout.fragment_encounter_auth) {
     }
 
     companion object {
+        private const val TAG = "EncounterAuth"
         private const val ARG_SHOW_SAVED_INFO = "show_saved_info"
         private const val ARG_FOCUS_PASSWORD = "focus_password"
 
@@ -112,6 +114,10 @@ class EncounterAuthFragment : Fragment(R.layout.fragment_encounter_auth) {
 
             loginButton.isEnabled = false
             val defaultWebViewUa = EncounterUserAgentProvider.get(requireContext())
+            Log.d(
+                TAG,
+                "Login attempt: site='${site.trim()}', login='${login.trim()}', passwordLength=${password.length}"
+            )
             Thread {
                 val result = EncounterApiClient.login(site, login, password, userAgent = defaultWebViewUa)
                 activity?.runOnUiThread {
@@ -130,8 +136,17 @@ class EncounterAuthFragment : Fragment(R.layout.fragment_encounter_auth) {
                             info.stoken.isNullOrBlank().not().toString(),
                             info.atoken.isNullOrBlank().not().toString()
                         )
+                        Log.d(
+                            TAG,
+                            "Login success: site='${info.site}', login='${info.login}', userId='${info.userId.orEmpty()}'"
+                        )
                         host?.onEncounterAuthorized(info)
                     }.onFailure { error ->
+                        Log.e(
+                            TAG,
+                            "Login failed: site='${site.trim()}', login='${login.trim()}', error='${error.message.orEmpty()}'",
+                            error
+                        )
                         resultTitle.visibility = View.GONE
                         resultText.visibility = View.GONE
                         Toast.makeText(
