@@ -5,6 +5,7 @@ import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URLEncoder
 import java.net.URL
 
@@ -617,7 +618,36 @@ object ChatServerClient {
         } else {
             "http://$trimmed"
         }
-        return withScheme.trimEnd('/')
+
+        return try {
+            val parsed = URI(withScheme)
+            val normalizedPath = normalizeMessagesTail(parsed.path)
+            URI(
+                parsed.scheme,
+                parsed.userInfo,
+                parsed.host,
+                parsed.port,
+                normalizedPath,
+                null,
+                null
+            ).toString().trimEnd('/')
+        } catch (_: Exception) {
+            normalizeMessagesTail(withScheme).orEmpty().trimEnd('/')
+        }
+    }
+
+    private fun normalizeMessagesTail(pathValue: String?): String? {
+        val value = pathValue?.trim().orEmpty()
+        if (value.isBlank()) return null
+
+        val noTrailingSlash = value.trimEnd('/')
+        if (noTrailingSlash.equals("/messages", ignoreCase = true)) {
+            return null
+        }
+        if (noTrailingSlash.endsWith("/messages", ignoreCase = true)) {
+            return noTrailingSlash.dropLast("/messages".length).ifBlank { null }
+        }
+        return noTrailingSlash
     }
 
     private fun buildMessagesUrl(serverBaseUrl: String, room: String, limit: Int?): String {

@@ -1,6 +1,7 @@
 package com.example.gamechat.data
 
 import android.content.Context
+import java.net.URI
 
 object UserPreferences {
     private const val PREFS_NAME = "game_chat_prefs"
@@ -247,12 +248,41 @@ object UserPreferences {
 
     private fun normalizeServerBaseUrl(url: String): String {
         val raw = url.trim().ifEmpty { DEFAULT_SERVER_URL }
-        val withoutMessagesPath = if (raw.endsWith("/messages")) {
-            raw.removeSuffix("/messages")
-        } else {
+        val withScheme = if (raw.startsWith("http://") || raw.startsWith("https://")) {
             raw
+        } else {
+            "http://$raw"
         }
-        return withoutMessagesPath.trimEnd('/').ifEmpty { DEFAULT_SERVER_URL }
+
+        return try {
+            val parsed = URI(withScheme)
+            val normalizedPath = normalizeMessagesTail(parsed.path)
+            URI(
+                parsed.scheme,
+                parsed.userInfo,
+                parsed.host,
+                parsed.port,
+                normalizedPath,
+                null,
+                null
+            ).toString().trimEnd('/').ifEmpty { DEFAULT_SERVER_URL }
+        } catch (_: Exception) {
+            normalizeMessagesTail(withScheme).orEmpty().trimEnd('/').ifEmpty { DEFAULT_SERVER_URL }
+        }
+    }
+
+    private fun normalizeMessagesTail(pathValue: String?): String? {
+        val value = pathValue?.trim().orEmpty()
+        if (value.isBlank()) return null
+
+        val noTrailingSlash = value.trimEnd('/')
+        if (noTrailingSlash.equals("/messages", ignoreCase = true)) {
+            return null
+        }
+        if (noTrailingSlash.endsWith("/messages", ignoreCase = true)) {
+            return noTrailingSlash.dropLast("/messages".length).ifBlank { null }
+        }
+        return noTrailingSlash
     }
 
     private fun normalizeChatRoom(room: String): String {

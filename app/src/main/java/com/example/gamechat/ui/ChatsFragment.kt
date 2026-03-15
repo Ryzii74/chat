@@ -406,6 +406,11 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
         val displayName = UserPreferences.getChatNick(context)
         val serverUrl = UserPreferences.getServerUrl(context)
         val room = UserPreferences.getChatRoom(context)
+
+        val imageUrlToRetry = failedMessage.imageUrl?.takeIf { url ->
+            val value = url.trim()
+            value.startsWith("http://") || value.startsWith("https://") || value.contains("/media/")
+        }
         
         Thread {
             sendMessageWithRetry(
@@ -413,7 +418,7 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
                 room = room,
                 displayName = displayName,
                 message = failedMessage.text,
-                imageData = null, // Для повторной отправки текстового сообщения
+                imageUrl = imageUrlToRetry,
                 messageIndex = messageIndex,
                 currentAttempt = 0
             )
@@ -464,22 +469,9 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
             val uploadResult = runCatching { compressImageForUpload(imageUri) }
                 .mapCatching { bytes -> ChatServerClient.uploadImage(serverUrl, bytes).getOrThrow() }
 
-            val sendResult = uploadResult.mapCatching { uploadedImageUrl ->
-                updateOutgoingMessageImage(messageIndex, uploadedImageUrl)
-                // После загрузки изображения отправляем сообщение - это обычно не требует повторов
-                ChatServerClient.sendMessage(
-                    serverBaseUrl = serverUrl,
-                    room = room,
-                    userName = displayName,
-                    message = caption
-                )
-            }
-
-            activity?.runOnUiThread {
-                if (!isAdded) return@runOnUiThread
-                
-                // Обрабатываем результат загрузки изображения
-                uploadResult.onFailure { error ->
+            uploadResult.onFailure { error ->
+                activity?.runOnUiThread {
+                    if (!isAdded) return@runOnUiThread
                     updateOutgoingMessageStatus(messageIndex, DeliveryState.FAILED)
                     val text = error.message ?: getString(R.string.unknown_error)
                     Toast.makeText(
@@ -488,8 +480,19 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
                         Toast.LENGTH_LONG
                     ).show()
                 }
-                
-                // sendResult обрабатывается в sendMessageWithRetry
+            }
+
+            uploadResult.onSuccess { uploadedImageUrl ->
+                updateOutgoingMessageImage(messageIndex, uploadedImageUrl)
+                sendMessageWithRetry(
+                    serverUrl = serverUrl,
+                    room = room,
+                    displayName = displayName,
+                    message = caption,
+                    imageUrl = uploadedImageUrl,
+                    messageIndex = messageIndex,
+                    currentAttempt = 0
+                )
             }
         }.start()
     }
@@ -622,7 +625,7 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
         room: String,
         displayName: String,
         message: String,
-        imageData: ByteArray?, // Пока не используется, оставляем для совместимости
+        imageUrl: String? = null,
         messageIndex: Int,
         currentAttempt: Int = 0
     ) {
@@ -641,10 +644,11 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
             serverBaseUrl = serverUrl,
             room = room,
             userName = displayName,
-            message = message
+            message = message,
+            imageUrl = imageUrl
         )
 
-        handleSendResult(sendResult, serverUrl, room, displayName, message, null, messageIndex, currentAttempt)
+        handleSendResult(sendResult, serverUrl, room, displayName, message, imageUrl, messageIndex, currentAttempt)
     }
 
     // Обработка результата отправки с логикой повторов
@@ -654,7 +658,7 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
         room: String,
         displayName: String,
         message: String,
-        imageData: ByteArray?,
+        imageUrl: String?,
         messageIndex: Int,
         currentAttempt: Int
     ) {
@@ -670,8 +674,13 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
                     retryHandler.postDelayed({
                         Thread {
                             sendMessageWithRetry(
-                                serverUrl, room, displayName, message, null,
-                                messageIndex, currentAttempt + 1
+                                serverUrl = serverUrl,
+                                room = room,
+                                displayName = displayName,
+                                message = message,
+                                imageUrl = imageUrl,
+                                messageIndex = messageIndex,
+                                currentAttempt = currentAttempt + 1
                             )
                         }.start()
                     }, delay)
