@@ -11,8 +11,10 @@ import android.os.Bundle
 import android.content.pm.PackageManager
 import android.view.KeyEvent
 import android.view.View
+import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
@@ -132,25 +134,121 @@ class ChatsFragment : Fragment(R.layout.fragment_chats) {
         recycler.adapter = adapter
     }
 
-    private fun showImageFullscreen(imageUrl: String) {
+    private fun showImageFullscreen(messageIndex: Int) {
         if (!isAdded) return
 
+        val imageMessageIndices = messages.indices.filter { index ->
+            !messages[index].imageUrl.isNullOrBlank()
+        }
+        if (imageMessageIndices.isEmpty()) return
+
+        var currentImagePosition = imageMessageIndices.indexOf(messageIndex)
+        if (currentImagePosition == -1) {
+            currentImagePosition = 0
+        }
+
         val dialog = Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        val imageView = ImageView(requireContext()).apply {
+        val root = FrameLayout(requireContext()).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
             )
             setBackgroundColor(Color.BLACK)
+        }
+
+        val imageView = ImageView(requireContext()).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
             scaleType = ImageView.ScaleType.FIT_CENTER
-            load(imageUrl) {
-                crossfade(true)
-            }
+        }
+
+        val counterView = TextView(requireContext()).apply {
+            textSize = 14f
+            setTextColor(Color.WHITE)
+            val params = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT,
+                FrameLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            params.topMargin = dp(20)
+            layoutParams = params
+        }
+
+        val closeButton = ImageButton(requireContext()).apply {
+            setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
+            setBackgroundColor(Color.TRANSPARENT)
+            setColorFilter(Color.WHITE)
+            val params = FrameLayout.LayoutParams(dp(44), dp(44))
+            params.gravity = Gravity.TOP or Gravity.END
+            params.topMargin = dp(12)
+            params.marginEnd = dp(12)
+            layoutParams = params
             setOnClickListener { dialog.dismiss() }
         }
 
-        dialog.setContentView(imageView)
+        val previousButton = ImageButton(requireContext()).apply {
+            setImageResource(android.R.drawable.ic_media_previous)
+            setBackgroundColor(Color.TRANSPARENT)
+            setColorFilter(Color.WHITE)
+            val params = FrameLayout.LayoutParams(dp(56), dp(56))
+            params.gravity = Gravity.START or Gravity.CENTER_VERTICAL
+            params.marginStart = dp(8)
+            layoutParams = params
+        }
+
+        val nextButton = ImageButton(requireContext()).apply {
+            setImageResource(android.R.drawable.ic_media_next)
+            setBackgroundColor(Color.TRANSPARENT)
+            setColorFilter(Color.WHITE)
+            val params = FrameLayout.LayoutParams(dp(56), dp(56))
+            params.gravity = Gravity.END or Gravity.CENTER_VERTICAL
+            params.marginEnd = dp(8)
+            layoutParams = params
+        }
+
+        fun renderCurrentImage() {
+            val message = messages[imageMessageIndices[currentImagePosition]]
+            val currentImageUrl = message.imageUrl.orEmpty()
+            imageView.load(currentImageUrl) {
+                crossfade(true)
+            }
+            counterView.text = "${currentImagePosition + 1}/${imageMessageIndices.size}"
+
+            previousButton.isEnabled = currentImagePosition > 0
+            previousButton.alpha = if (previousButton.isEnabled) 1f else 0.35f
+            nextButton.isEnabled = currentImagePosition < imageMessageIndices.lastIndex
+            nextButton.alpha = if (nextButton.isEnabled) 1f else 0.35f
+        }
+
+        previousButton.setOnClickListener {
+            if (currentImagePosition > 0) {
+                currentImagePosition -= 1
+                renderCurrentImage()
+            }
+        }
+        nextButton.setOnClickListener {
+            if (currentImagePosition < imageMessageIndices.lastIndex) {
+                currentImagePosition += 1
+                renderCurrentImage()
+            }
+        }
+
+        root.addView(imageView)
+        root.addView(counterView)
+        root.addView(closeButton)
+        root.addView(previousButton)
+        root.addView(nextButton)
+
+        dialog.setContentView(root)
+        renderCurrentImage()
         dialog.show()
+    }
+
+    private fun dp(value: Int): Int {
+        val density = resources.displayMetrics.density
+        return (value * density).toInt()
     }
 
     private fun loadHistory(showLoading: Boolean) {

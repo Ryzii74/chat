@@ -20,7 +20,7 @@ class ChatMessageAdapter(
     private val items: List<ChatMessage>,
     private val onMessageLongPress: (ChatMessage) -> Unit,
     private val onAnswerClick: ((String) -> Unit)? = null,
-    private val onImageClick: ((String) -> Unit)? = null
+    private val onImageClick: ((Int) -> Unit)? = null
 ) : RecyclerView.Adapter<ChatMessageAdapter.MessageViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -31,7 +31,9 @@ class ChatMessageAdapter(
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         val item = items[position]
-        holder.bind(item, onAnswerClick, onImageClick)
+        holder.bind(item, onAnswerClick) {
+            onImageClick?.invoke(position)
+        }
         holder.itemView.setOnLongClickListener {
             onMessageLongPress(item)
             true
