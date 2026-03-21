@@ -34,6 +34,8 @@ class SolverDataRepository(context: Context) {
         private var cachedFilms: PackedCatalog? = null
         @Volatile
         private var cachedPaintings: PackedCatalog? = null
+        @Volatile
+        private var cachedMendeleev: List<MendeleevElement>? = null
         private val cacheLock = Any()
         private val kartaslovCache = mutableMapOf<String, List<String>>()
     }
@@ -47,6 +49,10 @@ class SolverDataRepository(context: Context) {
         ensureBooks()
         ensureFilms()
         ensurePaintings()
+    }
+
+    fun preloadMendeleevDictionary() {
+        ensureMendeleev()
     }
 
     fun wordsForText(text: String): List<String> {
@@ -110,7 +116,7 @@ class SolverDataRepository(context: Context) {
 
     fun getPaintingTitles(): List<String> = ensurePaintings().titles()
 
-    fun getMendeleevElements(): List<MendeleevElement> = ensureData().mendeleev
+    fun getMendeleevElements(): List<MendeleevElement> = ensureMendeleev()
 
     fun getSlovoformsSet(): Set<String> {
         cachedSlovoformsSet?.let { return it }
@@ -223,7 +229,7 @@ class SolverDataRepository(context: Context) {
                 wikislovar = loadPhraseJsonEntries("solver/wikislovar.json"),
                 wikislovarPairs = loadPhraseJsonEntries("solver/wikislovarPairs.json"),
                 dslov = loadPhraseJsonEntries("solver/dslov.json"),
-                mendeleev = loadMendeleev("solver/mendeleev.json")
+                mendeleev = ensureMendeleev()
             )
             cachedData = data
             return data
@@ -267,6 +273,16 @@ class SolverDataRepository(context: Context) {
             val paintings = loadPackedCatalog("solver/paintings.txt")
             cachedPaintings = paintings
             return paintings
+        }
+    }
+
+    private fun ensureMendeleev(): List<MendeleevElement> {
+        cachedMendeleev?.let { return it }
+        synchronized(cacheLock) {
+            cachedMendeleev?.let { return it }
+            val elements = loadMendeleev("solver/mendeleev.json")
+            cachedMendeleev = elements
+            return elements
         }
     }
 
