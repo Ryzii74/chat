@@ -23,6 +23,14 @@ class SolverDataRepository(context: Context) {
     private var cachedRaschCombinedSet: Set<String>? = null
     private val kartaslovCache = mutableMapOf<String, List<String>>()
 
+    fun preloadAllData() {
+        val data = ensureData()
+        getRuWordsSet(data)
+        getEnWordsSet(data)
+        getSlovoformsSet()
+        getRaschCombinedSet(data)
+    }
+
     fun wordsForText(text: String): List<String> {
         val data = ensureData()
         val hasRu = text.any { it in '\u0400'..'\u04FF' }

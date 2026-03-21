@@ -10,6 +10,7 @@ import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.widget.SwitchCompat
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.Fragment
 import com.example.gamechat.data.ChatServerClient
@@ -24,7 +25,9 @@ import com.example.gamechat.ui.NotAvailableFragment
 import com.example.gamechat.ui.ServerSettingsFragment
 import com.example.gamechat.ui.SettingsFragment
 import com.example.gamechat.ui.SolverFragment
+import com.example.gamechat.ui.solver.SolverDataRepository
 import com.google.android.material.navigation.NavigationView
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 
 class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFragment.Host {
@@ -37,6 +40,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
     private lateinit var toolbar: com.google.android.material.appbar.MaterialToolbar
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private lateinit var gestureDetector: GestureDetector
+    private val isSolverDataPreloaded = AtomicBoolean(false)
     private var isUnlocked = false
     private var currentScreenMenuId: Int? = null
     
@@ -59,7 +63,9 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen().setKeepOnScreenCondition { !isSolverDataPreloaded.get() }
         super.onCreate(savedInstanceState)
+        preloadSolverData()
         setContentView(R.layout.activity_main)
         toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
@@ -444,6 +450,18 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
             } catch (e: Exception) {
                 // Игнорируем ошибки при загрузке настроек при старте
                 e.printStackTrace()
+            }
+        }.start()
+    }
+
+    private fun preloadSolverData() {
+        Thread {
+            try {
+                SolverDataRepository(applicationContext).preloadAllData()
+            } catch (e: Exception) {
+                Log.e(TAG, "Solver preload failed: ${e.message}", e)
+            } finally {
+                isSolverDataPreloaded.set(true)
             }
         }.start()
     }
