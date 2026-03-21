@@ -188,14 +188,8 @@ class SolverDataRepository(context: Context) {
         synchronized(this) {
             cachedData?.let { return it }
             val data = SolverData(
-                wordsRu = loadMergedWords(
-                    "solver/words.txt",
-                    "solver/sanstv.txt"
-                ),
-                wordsEn = loadMergedWords(
-                    "solver/enwords.txt",
-                    "solver/sanstv-en.txt"
-                ),
+                wordsRu = loadWords("solver/words-ru-merged.txt"),
+                wordsEn = loadWords("solver/words-en-merged.txt"),
                 associationsRu = loadAssociations("solver/associations_ru.json"),
                 associationsEn = loadAssociations("solver/associations_en.json"),
                 books = loadCatalogEntries("solver/books.txt"),
