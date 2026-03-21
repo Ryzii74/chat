@@ -68,18 +68,36 @@ class SolverEngine(
         val minLength = pattern.length - minusCount * 2 - if (isAnyLettersCount) 1 else 0
         val cleanPattern = pattern.replace(Regex("[*?-]"), "")
         val letterCounts = cleanPattern.groupingBy { it }.eachCount()
+        val letters = letterCounts.keys.toList()
+        val letterToIndex = mutableMapOf<Char, Int>()
+        letters.forEachIndexed { index, char ->
+            letterToIndex[char] = index
+        }
+        val requiredCounts = IntArray(letters.size) { index ->
+            letterCounts[letters[index]] ?: 0
+        }
+
         return words.filter { word ->
-            val normalizedWord = normalize(word)
+            val normalizedWord = word
             if (isAnyLettersCount) {
                 if (normalizedWord.length < minLength) return@filter false
             } else if (normalizedWord.length != minLength) {
                 return@filter false
             }
 
+            if (requiredCounts.isEmpty()) return@filter true
+
+            val matchedCounts = IntArray(requiredCounts.size)
+            normalizedWord.forEach { char ->
+                val index = letterToIndex[char] ?: return@forEach
+                if (matchedCounts[index] < requiredCounts[index]) {
+                    matchedCounts[index]++
+                }
+            }
+
             var lettersOmit = 0
-            for ((letter, count) in letterCounts) {
-                val found = normalizedWord.count { it == letter }
-                lettersOmit += if (found > count) 0 else (count - found)
+            for (index in requiredCounts.indices) {
+                lettersOmit += requiredCounts[index] - matchedCounts[index]
                 if (lettersOmit > minusCount) {
                     return@filter false
                 }

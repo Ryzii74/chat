@@ -31,14 +31,17 @@ object UserPreferences {
 
     fun getServerUrl(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        val stored = prefs.getString(KEY_SERVER_URL, DEFAULT_SERVER_URL).orEmpty()
-        return normalizeServerBaseUrl(stored)
+        val fixedUrl = DEFAULT_SERVER_URL
+        val stored = prefs.getString(KEY_SERVER_URL, "").orEmpty()
+        if (stored != fixedUrl) {
+            prefs.edit().putString(KEY_SERVER_URL, fixedUrl).apply()
+        }
+        return fixedUrl
     }
 
-    fun setServerUrl(context: Context, serverUrl: String) {
-        val normalizedUrl = normalizeServerBaseUrl(serverUrl)
+    fun setServerUrl(context: Context, @Suppress("UNUSED_PARAMETER") serverUrl: String) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        prefs.edit().putString(KEY_SERVER_URL, normalizedUrl).apply()
+        prefs.edit().putString(KEY_SERVER_URL, DEFAULT_SERVER_URL).apply()
     }
 
     fun getChatRoom(context: Context): String {
