@@ -29,11 +29,11 @@ class SolverDataRepository(context: Context) {
         @Volatile
         private var cachedRaschCombinedSet: Set<String>? = null
         @Volatile
-        private var cachedBooks: List<CatalogEntry>? = null
+        private var cachedBooks: PackedCatalog? = null
         @Volatile
-        private var cachedFilms: List<CatalogEntry>? = null
+        private var cachedFilms: PackedCatalog? = null
         @Volatile
-        private var cachedPaintings: List<CatalogEntry>? = null
+        private var cachedPaintings: PackedCatalog? = null
         private val cacheLock = Any()
         private val kartaslovCache = mutableMapOf<String, List<String>>()
     }
@@ -93,22 +93,22 @@ class SolverDataRepository(context: Context) {
     }
 
     fun searchBooks(query: String): List<String> {
-        return searchCatalog(query, ensureBooks())
+        return ensureBooks().search(normalizeForCatalogSearch(query))
     }
 
     fun searchFilms(query: String): List<String> {
-        return searchCatalog(query, ensureFilms())
+        return ensureFilms().search(normalizeForCatalogSearch(query))
     }
 
     fun searchPaintings(query: String): List<String> {
-        return searchCatalog(query, ensurePaintings())
+        return ensurePaintings().search(normalizeForCatalogSearch(query))
     }
 
-    fun getBookTitles(): List<String> = ensureBooks().map { it.title }
+    fun getBookTitles(): List<String> = ensureBooks().titles()
 
-    fun getFilmTitles(): List<String> = ensureFilms().map { it.title }
+    fun getFilmTitles(): List<String> = ensureFilms().titles()
 
-    fun getPaintingTitles(): List<String> = ensurePaintings().map { it.title }
+    fun getPaintingTitles(): List<String> = ensurePaintings().titles()
 
     fun getMendeleevElements(): List<MendeleevElement> = ensureData().mendeleev
 
@@ -208,9 +208,6 @@ class SolverDataRepository(context: Context) {
                 wordsEn = ensureEnWords(),
                 associationsRu = loadAssociations("solver/associations_ru.json"),
                 associationsEn = loadAssociations("solver/associations_en.json"),
-                books = ensureBooks(),
-                films = ensureFilms(),
-                paintings = ensurePaintings(),
                 phrases = loadPhraseEntries(
                     assetPath = "solver/phrases.txt",
                     splitByCarriageReturn = true,
@@ -243,31 +240,31 @@ class SolverDataRepository(context: Context) {
         }
     }
 
-    private fun ensureBooks(): List<CatalogEntry> {
+    private fun ensureBooks(): PackedCatalog {
         cachedBooks?.let { return it }
         synchronized(cacheLock) {
             cachedBooks?.let { return it }
-            val books = loadCatalogEntries("solver/books.txt")
+            val books = loadPackedCatalog("solver/books.txt")
             cachedBooks = books
             return books
         }
     }
 
-    private fun ensureFilms(): List<CatalogEntry> {
+    private fun ensureFilms(): PackedCatalog {
         cachedFilms?.let { return it }
         synchronized(cacheLock) {
             cachedFilms?.let { return it }
-            val films = loadCatalogEntries("solver/films.txt")
+            val films = loadPackedCatalog("solver/films.txt")
             cachedFilms = films
             return films
         }
     }
 
-    private fun ensurePaintings(): List<CatalogEntry> {
+    private fun ensurePaintings(): PackedCatalog {
         cachedPaintings?.let { return it }
         synchronized(cacheLock) {
             cachedPaintings?.let { return it }
-            val paintings = loadCatalogEntries("solver/paintings.txt")
+            val paintings = loadPackedCatalog("solver/paintings.txt")
             cachedPaintings = paintings
             return paintings
         }
@@ -362,31 +359,37 @@ class SolverDataRepository(context: Context) {
         return result
     }
 
-    private fun loadCatalogEntries(assetPath: String): List<CatalogEntry> {
-        val result = mutableListOf<CatalogEntry>()
+    private fun loadPackedCatalog(assetPath: String): PackedCatalog {
+        val titlesOutput = ByteArrayOutputStream()
+        val titlesOffsets = IntAccumulator()
+        val searchOutput = ByteArrayOutputStream()
+        val searchOffsets = IntAccumulator()
+        titlesOffsets.add(0)
+        searchOffsets.add(0)
+
         appContext.assets.open(assetPath).bufferedReader().useLines { sequence ->
             sequence.forEach { raw ->
                 val title = raw.trim()
                 if (title.isBlank()) return@forEach
-                result.add(
-                    CatalogEntry(
-                        title = title,
-                        searchText = normalizeForCatalogSearch(title)
-                    )
-                )
+                val searchText = normalizeForCatalogSearch(title)
+
+                val titleBytes = title.toByteArray(Charsets.UTF_8)
+                titlesOutput.write(titleBytes)
+                titlesOutput.write('\n'.code)
+                titlesOffsets.add(titlesOutput.size())
+
+                val searchBytes = searchText.toByteArray(Charsets.UTF_8)
+                searchOutput.write(searchBytes)
+                searchOutput.write('\n'.code)
+                searchOffsets.add(searchOutput.size())
             }
         }
-        return result
-    }
-
-    private fun searchCatalog(query: String, catalog: List<CatalogEntry>): List<String> {
-        val normalizedQuery = normalizeForCatalogSearch(query)
-        if (normalizedQuery.isBlank()) return emptyList()
-        return catalog.asSequence()
-            .filter { it.searchText.contains(normalizedQuery) }
-            .map { it.title }
-            .take(60)
-            .toList()
+        return PackedCatalog(
+            titlesData = titlesOutput.toByteArray(),
+            titlesOffsets = titlesOffsets.toIntArray(),
+            searchData = searchOutput.toByteArray(),
+            searchOffsets = searchOffsets.toIntArray()
+        )
     }
 
     private fun loadKartaslovWords(section: String, word: String): List<String> {
@@ -546,9 +549,6 @@ class SolverDataRepository(context: Context) {
         val wordsEn: List<String>,
         val associationsRu: Map<String, List<String>>,
         val associationsEn: Map<String, List<String>>,
-        val books: List<CatalogEntry>,
-        val films: List<CatalogEntry>,
-        val paintings: List<CatalogEntry>,
         val phrases: List<PhraseEntry>,
         val pogovorki: List<PhraseEntry>,
         val wikislovar: List<PhraseEntry>,
@@ -593,10 +593,77 @@ class SolverDataRepository(context: Context) {
         fun toIntArray(): IntArray = values.copyOf(size)
     }
 
-    private data class CatalogEntry(
-        val title: String,
-        val searchText: String
-    )
+    private class PackedCatalog(
+        private val titlesData: ByteArray,
+        private val titlesOffsets: IntArray,
+        private val searchData: ByteArray,
+        private val searchOffsets: IntArray
+    ) {
+        fun search(normalizedQuery: String): List<String> {
+            if (normalizedQuery.isBlank()) return emptyList()
+            val queryBytes = normalizedQuery.toByteArray(Charsets.UTF_8)
+            val result = ArrayList<String>(60)
+
+            for (index in 0 until size()) {
+                if (containsBytes(searchData, searchOffsets[index], searchOffsets[index + 1], queryBytes)) {
+                    result.add(readEntry(titlesData, titlesOffsets[index], titlesOffsets[index + 1]))
+                    if (result.size == 60) break
+                }
+            }
+            return result
+        }
+
+        fun titles(): List<String> {
+            val result = ArrayList<String>(size())
+            for (index in 0 until size()) {
+                result.add(readEntry(titlesData, titlesOffsets[index], titlesOffsets[index + 1]))
+            }
+            return result
+        }
+
+        private fun size(): Int = titlesOffsets.size - 1
+
+        private fun readEntry(data: ByteArray, start: Int, endExclusive: Int): String {
+            val payloadEndExclusive = if (
+                endExclusive > start && data[endExclusive - 1] == '\n'.code.toByte()
+            ) {
+                endExclusive - 1
+            } else {
+                endExclusive
+            }
+            return data.decodeToString(startIndex = start, endIndex = payloadEndExclusive)
+        }
+
+        private fun containsBytes(
+            data: ByteArray,
+            start: Int,
+            endExclusive: Int,
+            needle: ByteArray
+        ): Boolean {
+            if (needle.isEmpty()) return true
+            val dataEndExclusive = if (
+                endExclusive > start && data[endExclusive - 1] == '\n'.code.toByte()
+            ) {
+                endExclusive - 1
+            } else {
+                endExclusive
+            }
+            val haystackLength = dataEndExclusive - start
+            if (haystackLength < needle.size) return false
+
+            val maxStart = dataEndExclusive - needle.size
+            var i = start
+            while (i <= maxStart) {
+                var j = 0
+                while (j < needle.size && data[i + j] == needle[j]) {
+                    j++
+                }
+                if (j == needle.size) return true
+                i++
+            }
+            return false
+        }
+    }
 
     private data class PhraseEntry(
         val original: String,
