@@ -460,6 +460,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
                 SolverDataRepository(applicationContext).preloadWordDictionaries()
                 SolverDataRepository(applicationContext).preloadCatalogDictionaries()
                 SolverDataRepository(applicationContext).preloadMendeleevDictionary()
+                SolverDataRepository(applicationContext).preloadPhraseDictionaries()
             } catch (e: Exception) {
                 Log.e(TAG, "Solver preload failed: ${e.message}", e)
             } finally {

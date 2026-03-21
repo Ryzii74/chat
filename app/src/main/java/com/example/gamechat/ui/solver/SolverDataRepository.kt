@@ -36,6 +36,14 @@ class SolverDataRepository(context: Context) {
         private var cachedPaintings: PackedCatalog? = null
         @Volatile
         private var cachedMendeleev: List<MendeleevElement>? = null
+        @Volatile
+        private var cachedPhrases: PackedPhraseList? = null
+        @Volatile
+        private var cachedPogovorki: PackedPhraseList? = null
+        @Volatile
+        private var cachedWikislovar: PackedPhraseList? = null
+        @Volatile
+        private var cachedWikislovarPairs: PackedPhraseList? = null
         private val cacheLock = Any()
         private val kartaslovCache = mutableMapOf<String, List<String>>()
     }
@@ -53,6 +61,13 @@ class SolverDataRepository(context: Context) {
 
     fun preloadMendeleevDictionary() {
         ensureMendeleev()
+    }
+
+    fun preloadPhraseDictionaries() {
+        ensurePhrases()
+        ensurePogovorki()
+        ensureWikislovar()
+        ensureWikislovarPairs()
     }
 
     fun wordsForText(text: String): List<String> {
@@ -164,31 +179,32 @@ class SolverDataRepository(context: Context) {
             tokens.map(::normalize).filter { it.isNotBlank() }
         }
 
-        val directPhrases = data.phrases.filter { phrase ->
-            isPhraseMatchWordsCount(phrase.searchText, isWordsCount, wordsCount) &&
-                words.all { word -> Regex("(^|\\s)${Regex.escape(word)}(\\s|$)").containsMatchIn(phrase.searchText) }
-        }.map { it.original }
+        val directPhrases = data.phrases.filterOriginals { searchText, original ->
+            isPhraseMatchWordsCount(searchText, isWordsCount, wordsCount) &&
+                words.all { word -> containsWholeWord(searchText, word) }
+        }
 
         val directSet = directPhrases.toSet()
-        val allPhrases = data.phrases.filter { phrase ->
-            isPhraseMatchWordsCount(phrase.searchText, isWordsCount, wordsCount) &&
-                words.all { word -> !directSet.contains(phrase.original) && phrase.searchText.contains(word) }
-        }.map { it.original }
+        val allPhrases = data.phrases.filterOriginals { searchText, original ->
+            isPhraseMatchWordsCount(searchText, isWordsCount, wordsCount) &&
+                !directSet.contains(original) &&
+                words.all { word -> searchText.contains(word) }
+        }
 
-        val wikiPhrases = data.wikislovar.filter { phrase ->
-            isPhraseMatchWordsCount(phrase.searchText, isWordsCount, wordsCount) &&
-                words.all { word -> phrase.searchText.contains(word) }
-        }.map { it.original }
+        val wikiPhrases = data.wikislovar.filterOriginals { searchText, _ ->
+            isPhraseMatchWordsCount(searchText, isWordsCount, wordsCount) &&
+                words.all { word -> searchText.contains(word) }
+        }
 
-        val wikiPairs = data.wikislovarPairs.filter { phrase ->
-            isPhraseMatchWordsCount(phrase.searchText, isWordsCount, wordsCount) &&
-                words.all { word -> phrase.searchText.contains(word) }
-        }.map { it.original }
+        val wikiPairs = data.wikislovarPairs.filterOriginals { searchText, _ ->
+            isPhraseMatchWordsCount(searchText, isWordsCount, wordsCount) &&
+                words.all { word -> searchText.contains(word) }
+        }
 
-        val pogovorkiPhrases = data.pogovorki.filter { phrase ->
-            isPhraseMatchWordsCount(phrase.searchText, isWordsCount, wordsCount) &&
-                words.all { word -> phrase.searchText.contains(word) }
-        }.map { it.original }
+        val pogovorkiPhrases = data.pogovorki.filterOriginals { searchText, _ ->
+            isPhraseMatchWordsCount(searchText, isWordsCount, wordsCount) &&
+                words.all { word -> searchText.contains(word) }
+        }
 
         val dslovPhrases = data.dslov.filter { phrase ->
             isPhraseMatchWordsCount(phrase.searchText, isWordsCount, wordsCount) &&
@@ -214,20 +230,10 @@ class SolverDataRepository(context: Context) {
                 wordsEn = ensureEnWords(),
                 associationsRu = loadAssociations("solver/associations_ru.json"),
                 associationsEn = loadAssociations("solver/associations_en.json"),
-                phrases = loadPhraseEntries(
-                    assetPath = "solver/phrases.txt",
-                    splitByCarriageReturn = true,
-                    removePunctuation = false,
-                    toLowerCase = false
-                ),
-                pogovorki = loadPhraseEntries(
-                    assetPath = "solver/pogovorki.txt",
-                    splitByCarriageReturn = false,
-                    removePunctuation = true,
-                    toLowerCase = true
-                ),
-                wikislovar = loadPhraseJsonEntries("solver/wikislovar.json"),
-                wikislovarPairs = loadPhraseJsonEntries("solver/wikislovarPairs.json"),
+                phrases = ensurePhrases(),
+                pogovorki = ensurePogovorki(),
+                wikislovar = ensureWikislovar(),
+                wikislovarPairs = ensureWikislovarPairs(),
                 dslov = loadPhraseJsonEntries("solver/dslov.json"),
                 mendeleev = ensureMendeleev()
             )
@@ -286,6 +292,56 @@ class SolverDataRepository(context: Context) {
         }
     }
 
+    private fun ensurePhrases(): PackedPhraseList {
+        cachedPhrases?.let { return it }
+        synchronized(cacheLock) {
+            cachedPhrases?.let { return it }
+            val phrases = loadPackedPhraseEntries(
+                assetPath = "solver/phrases.txt",
+                splitByCarriageReturn = true,
+                removePunctuation = false,
+                toLowerCase = false
+            )
+            cachedPhrases = phrases
+            return phrases
+        }
+    }
+
+    private fun ensurePogovorki(): PackedPhraseList {
+        cachedPogovorki?.let { return it }
+        synchronized(cacheLock) {
+            cachedPogovorki?.let { return it }
+            val phrases = loadPackedPhraseEntries(
+                assetPath = "solver/pogovorki.txt",
+                splitByCarriageReturn = false,
+                removePunctuation = true,
+                toLowerCase = true
+            )
+            cachedPogovorki = phrases
+            return phrases
+        }
+    }
+
+    private fun ensureWikislovar(): PackedPhraseList {
+        cachedWikislovar?.let { return it }
+        synchronized(cacheLock) {
+            cachedWikislovar?.let { return it }
+            val phrases = loadPackedPhraseJsonEntries("solver/wikislovar.json")
+            cachedWikislovar = phrases
+            return phrases
+        }
+    }
+
+    private fun ensureWikislovarPairs(): PackedPhraseList {
+        cachedWikislovarPairs?.let { return it }
+        synchronized(cacheLock) {
+            cachedWikislovarPairs?.let { return it }
+            val phrases = loadPackedPhraseJsonEntries("solver/wikislovarPairs.json")
+            cachedWikislovarPairs = phrases
+            return phrases
+        }
+    }
+
     private fun ensureEnWords(): List<String> {
         cachedEnWords?.let { return it }
         synchronized(cacheLock) {
@@ -303,9 +359,9 @@ class SolverDataRepository(context: Context) {
             val set = linkedSetOf<String>()
             data.wordsRu.forEach { set.add(normalizeForRaschObject(it)) }
             data.wordsEn.forEach { set.add(normalizeForRaschObject(it)) }
-            data.phrases.forEach { set.add(normalizeForRaschObject(it.original)) }
-            data.pogovorki.forEach { set.add(normalizeForRaschObject(it.original)) }
-            data.wikislovar.forEach { set.add(normalizeForRaschObject(it.original)) }
+            data.phrases.forEachOriginal { original -> set.add(normalizeForRaschObject(original)) }
+            data.pogovorki.forEachOriginal { original -> set.add(normalizeForRaschObject(original)) }
+            data.wikislovar.forEachOriginal { original -> set.add(normalizeForRaschObject(original)) }
             data.dslov.forEach { set.add(normalizeForRaschObject(it.original)) }
             val filtered = set.filter { it.isNotBlank() }.toSet()
             cachedRaschCombinedSet = filtered
@@ -459,19 +515,19 @@ class SolverDataRepository(context: Context) {
         return list
     }
 
-    private fun loadPhraseEntries(
+    private fun loadPackedPhraseEntries(
         assetPath: String,
         splitByCarriageReturn: Boolean,
         removePunctuation: Boolean,
         toLowerCase: Boolean
-    ): List<PhraseEntry> {
+    ): PackedPhraseList {
         val raw = appContext.assets.open(assetPath).bufferedReader().use { it.readText() }
         val rows = if (splitByCarriageReturn) {
             raw.split('\r')
         } else {
             raw.split(Regex("\\r?\\n"))
         }
-        return rows.mapNotNull { row ->
+        val phraseRows = rows.mapNotNull { row ->
             var prepared = row.trim()
             if (removePunctuation) {
                 prepared = prepared
@@ -489,6 +545,11 @@ class SolverDataRepository(context: Context) {
                 searchText = normalize(original)
             )
         }
+        return packPhraseEntries(phraseRows)
+    }
+
+    private fun loadPackedPhraseJsonEntries(assetPath: String): PackedPhraseList {
+        return packPhraseEntries(loadPhraseJsonEntries(assetPath))
     }
 
     private fun loadPhraseJsonEntries(assetPath: String): List<PhraseEntry> {
@@ -513,6 +574,32 @@ class SolverDataRepository(context: Context) {
         return result
     }
 
+    private fun packPhraseEntries(entries: List<PhraseEntry>): PackedPhraseList {
+        val originalsOutput = ByteArrayOutputStream()
+        val originalsOffsets = IntAccumulator()
+        val searchOutput = ByteArrayOutputStream()
+        val searchOffsets = IntAccumulator()
+        originalsOffsets.add(0)
+        searchOffsets.add(0)
+
+        entries.forEach { entry ->
+            originalsOutput.write(entry.original.toByteArray(Charsets.UTF_8))
+            originalsOutput.write('\n'.code)
+            originalsOffsets.add(originalsOutput.size())
+
+            searchOutput.write(entry.searchText.toByteArray(Charsets.UTF_8))
+            searchOutput.write('\n'.code)
+            searchOffsets.add(searchOutput.size())
+        }
+
+        return PackedPhraseList(
+            originalsData = originalsOutput.toByteArray(),
+            originalsOffsets = originalsOffsets.toIntArray(),
+            searchData = searchOutput.toByteArray(),
+            searchOffsets = searchOffsets.toIntArray()
+        )
+    }
+
     private fun loadMendeleev(assetPath: String): List<MendeleevElement> {
         val json = appContext.assets.open(assetPath).bufferedReader().use { it.readText() }
         val array = JSONArray(json)
@@ -535,6 +622,19 @@ class SolverDataRepository(context: Context) {
         if (!isWordsCount || number == null) return true
         val spacesCount = phrase.count { it == ' ' }
         return spacesCount + 1 == number
+    }
+
+    private fun containsWholeWord(text: String, word: String): Boolean {
+        if (word.isBlank()) return false
+        var index = text.indexOf(word)
+        while (index >= 0) {
+            val startOk = index == 0 || text[index - 1] == ' '
+            val endIndex = index + word.length
+            val endOk = endIndex == text.length || text[endIndex] == ' '
+            if (startOk && endOk) return true
+            index = text.indexOf(word, index + 1)
+        }
+        return false
     }
 
     private fun normalize(value: String): String {
@@ -565,10 +665,10 @@ class SolverDataRepository(context: Context) {
         val wordsEn: List<String>,
         val associationsRu: Map<String, List<String>>,
         val associationsEn: Map<String, List<String>>,
-        val phrases: List<PhraseEntry>,
-        val pogovorki: List<PhraseEntry>,
-        val wikislovar: List<PhraseEntry>,
-        val wikislovarPairs: List<PhraseEntry>,
+        val phrases: PackedPhraseList,
+        val pogovorki: PackedPhraseList,
+        val wikislovar: PackedPhraseList,
+        val wikislovarPairs: PackedPhraseList,
         val dslov: List<PhraseEntry>,
         val mendeleev: List<MendeleevElement>
     )
@@ -678,6 +778,44 @@ class SolverDataRepository(context: Context) {
                 i++
             }
             return false
+        }
+    }
+
+    private class PackedPhraseList(
+        private val originalsData: ByteArray,
+        private val originalsOffsets: IntArray,
+        private val searchData: ByteArray,
+        private val searchOffsets: IntArray
+    ) {
+        fun filterOriginals(predicate: (searchText: String, original: String) -> Boolean): List<String> {
+            val result = mutableListOf<String>()
+            for (index in 0 until size()) {
+                val searchText = readEntry(searchData, searchOffsets[index], searchOffsets[index + 1])
+                val original = readEntry(originalsData, originalsOffsets[index], originalsOffsets[index + 1])
+                if (predicate(searchText, original)) {
+                    result.add(original)
+                }
+            }
+            return result
+        }
+
+        fun forEachOriginal(action: (String) -> Unit) {
+            for (index in 0 until size()) {
+                action(readEntry(originalsData, originalsOffsets[index], originalsOffsets[index + 1]))
+            }
+        }
+
+        private fun size(): Int = originalsOffsets.size - 1
+
+        private fun readEntry(data: ByteArray, start: Int, endExclusive: Int): String {
+            val payloadEndExclusive = if (
+                endExclusive > start && data[endExclusive - 1] == '\n'.code.toByte()
+            ) {
+                endExclusive - 1
+            } else {
+                endExclusive
+            }
+            return data.decodeToString(startIndex = start, endIndex = payloadEndExclusive)
         }
     }
 
