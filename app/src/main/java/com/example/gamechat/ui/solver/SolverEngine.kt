@@ -56,9 +56,9 @@ class SolverEngine(
             .distinct()
             .take(60)
         return if (candidates.isEmpty()) {
-            "Ничего не найдено."
+            "[Анаграмма]\nНичего не найдено."
         } else {
-            "Найдено (${candidates.size}): ${candidates.joinToString(", ")}"
+            "[Анаграмма]\nНайдено:\n${candidates.joinToString("\n")}"
         }
     }
 
