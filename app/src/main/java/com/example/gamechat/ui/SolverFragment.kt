@@ -128,15 +128,12 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                 val autoEnabledNow = UserPreferences.isSolverAutoEnabled(requireContext())
                 autoModeEnabled = autoEnabledNow
                 val runtimeModes = detectModesForMessage(text) ?: listOf(selectedMode)
-                val result = if (runtimeModes.size == 1) {
-                    solverEngine.resolve(runtimeModes.first(), text)
-                } else {
-                    runtimeModes.joinToString("\n\n") { mode ->
-                        "[${mode.title}]\n${solverEngine.resolve(mode, text)}"
-                    }
+                val replies = runtimeModes.map { mode ->
+                    val raw = solverEngine.resolve(mode, text)
+                    buildReplyForMode(mode, raw)
                 }
                 activity?.runOnUiThread {
-                    showResultWithPagination(result, loadMoreButton)
+                    showRepliesWithPagination(replies, loadMoreButton)
                     scrollToBottom(root)
                 }
             }.start()
@@ -310,15 +307,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         saveSolverHistory()
     }
 
-    private fun showResultWithPagination(rawResult: String, loadMoreButton: Button) {
-        val replies = normalizeResultReplies(rawResult)
-        if (replies.isEmpty()) {
-            addSystemMessage("Решатель", rawResult)
-            pendingReplies.clear()
-            updateLoadMoreButton(loadMoreButton)
-            return
-        }
-
+    private fun showRepliesWithPagination(replies: List<SolverReply>, loadMoreButton: Button) {
         val firstPage = replies.take(RESULT_PAGE_SIZE)
         firstPage.forEach { reply ->
             addSystemMessage(reply.sender, reply.text)
@@ -342,44 +331,14 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         updateLoadMoreButton(loadMoreButton)
     }
 
-    private fun normalizeResultReplies(rawResult: String): List<SolverReply> {
-        val blocks = rawResult
-            .split(Regex("\\n\\s*\\n"))
-            .map { it.trim() }
-            .filter { it.isNotBlank() }
-
-        if (blocks.isEmpty()) return emptyList()
-
-        val replies = mutableListOf<SolverReply>()
-        blocks.forEach { block ->
-            val lines = block.split('\n')
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-            if (lines.isEmpty()) return@forEach
-
-            val firstLine = lines.first()
-            val header = extractReplyHeader(firstLine)
-            if (header != null) {
-                val content = lines.drop(1).joinToString("\n").trim()
-                val text = sanitizeReplyText(if (content.isBlank()) firstLine else content)
-                replies.add(SolverReply(sender = header, text = text))
-            } else {
-                replies.add(SolverReply(sender = "Решатель", text = sanitizeReplyText(lines.joinToString("\n"))))
-            }
+    private fun buildReplyForMode(mode: SolverMode, rawResult: String): SolverReply {
+        val answers = extractAnswers(rawResult)
+        val text = if (answers.isEmpty()) {
+            "ничего не найдено"
+        } else {
+            answers.joinToString("\n")
         }
-        return replies.filter { it.text.isNotBlank() }
-    }
-
-    private fun extractReplyHeader(line: String): String? {
-        if (line.startsWith("[") && line.endsWith("]") && line.length > 2) {
-            return line.removePrefix("[").removeSuffix("]").trim()
-        }
-        val hasLetters = line.any { it.isLetter() }
-        val isUppercaseHeading = hasLetters && line == line.uppercase(Locale.ROOT)
-        if (isUppercaseHeading && !line.contains(':')) {
-            return line
-        }
-        return null
+        return SolverReply(sender = mode.title, text = text)
     }
 
     private fun updateLoadMoreButton(button: Button) {
@@ -415,24 +374,44 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         return clickableLines.joinToString("\n")
     }
 
-    private fun sanitizeReplyText(rawText: String): String {
-        return rawText
+    private fun extractAnswers(rawText: String): List<String> {
+        val noResultsRegex = Regex(
+            "^(ничего не найдено|нет результатов|по маске ничего не найдено|ассоциации не найдены|общих ассоциаций не найдено|книги не найдены|фильмы не найдены|картины не найдены)\\.?$",
+            RegexOption.IGNORE_CASE
+        )
+        val foundLine = Regex("^Найдено\\s*(\\(\\d+\\))?\\s*$", RegexOption.IGNORE_CASE)
+        val foundPrefix = Regex("^Найдено\\s*(\\(\\d+\\))?\\s*:\\s*(.+)$", RegexOption.IGNORE_CASE)
+        val sectionHeader = Regex("^[\\[\\(]?[А-ЯA-Z\\s\\-()]+[\\]\\)]?$")
+
+        val values = rawText
             .split('\n')
             .mapNotNull { line ->
                 val trimmed = line.trim()
                 if (trimmed.isBlank()) return@mapNotNull null
-                val foundLine = Regex("^Найдено\\s*(\\(\\d+\\))?\\s*$", RegexOption.IGNORE_CASE)
                 if (foundLine.matches(trimmed)) return@mapNotNull null
-                val foundPrefix = Regex("^Найдено\\s*(\\(\\d+\\))?\\s*:\\s*(.+)$", RegexOption.IGNORE_CASE)
+                if (noResultsRegex.matches(trimmed.lowercase(Locale.ROOT))) return@mapNotNull null
+                if (trimmed.startsWith("[") && trimmed.endsWith("]")) return@mapNotNull null
+                if (sectionHeader.matches(trimmed) && !trimmed.contains(":")) return@mapNotNull null
+                if (trimmed.startsWith("*") && trimmed.endsWith("*")) return@mapNotNull null
+
                 val prefixMatch = foundPrefix.matchEntire(trimmed)
-                if (prefixMatch != null) {
-                    prefixMatch.groupValues[2].trim().ifBlank { null }
+                val prepared = if (prefixMatch != null) {
+                    prefixMatch.groupValues[2].trim()
+                } else if (trimmed.contains(":")) {
+                    trimmed.substringAfter(":").trim()
                 } else {
                     trimmed
                 }
+
+                prepared
+                    .replace("`", "")
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotBlank() }
             }
-            .joinToString("\n")
-            .trim()
+            .flatten()
+
+        return values.distinct()
     }
 
     private fun isNonClickableStatusLine(line: String): Boolean {
