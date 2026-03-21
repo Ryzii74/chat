@@ -1,7 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <style name="Theme.GameChatAndroid.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">#0B1220</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_notification</item>
+        <item name="windowSplashScreenBackground">#060A06</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_en</item>
         <item name="postSplashScreenTheme">@style/Theme.GameChatAndroid</item>
     </style>
 
