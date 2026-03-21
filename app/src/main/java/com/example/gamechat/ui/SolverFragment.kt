@@ -361,13 +361,13 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             val header = extractReplyHeader(firstLine)
             if (header != null) {
                 val content = lines.drop(1).joinToString("\n").trim()
-                val text = if (content.isBlank()) firstLine else content
+                val text = sanitizeReplyText(if (content.isBlank()) firstLine else content)
                 replies.add(SolverReply(sender = header, text = text))
             } else {
-                replies.add(SolverReply(sender = "Решатель", text = lines.joinToString("\n")))
+                replies.add(SolverReply(sender = "Решатель", text = sanitizeReplyText(lines.joinToString("\n"))))
             }
         }
-        return replies
+        return replies.filter { it.text.isNotBlank() }
     }
 
     private fun extractReplyHeader(line: String): String? {
@@ -404,7 +404,8 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             if (trimmedLine.isNotEmpty() && 
                 !trimmedLine.startsWith("[") && 
                 !trimmedLine.endsWith("]") &&
-                !trimmedLine.contains(":")) {
+                !trimmedLine.contains(":") &&
+                !isNonClickableStatusLine(trimmedLine)) {
                 // Это потенциальный ответ - делаем его кликабельным
                 clickableLines.add("[CLICKABLE]$trimmedLine[/CLICKABLE]")
             } else {
@@ -412,6 +413,36 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             }
         }
         return clickableLines.joinToString("\n")
+    }
+
+    private fun sanitizeReplyText(rawText: String): String {
+        return rawText
+            .split('\n')
+            .mapNotNull { line ->
+                val trimmed = line.trim()
+                if (trimmed.isBlank()) return@mapNotNull null
+                val foundLine = Regex("^Найдено\\s*(\\(\\d+\\))?\\s*$", RegexOption.IGNORE_CASE)
+                if (foundLine.matches(trimmed)) return@mapNotNull null
+                val foundPrefix = Regex("^Найдено\\s*(\\(\\d+\\))?\\s*:\\s*(.+)$", RegexOption.IGNORE_CASE)
+                val prefixMatch = foundPrefix.matchEntire(trimmed)
+                if (prefixMatch != null) {
+                    prefixMatch.groupValues[2].trim().ifBlank { null }
+                } else {
+                    trimmed
+                }
+            }
+            .joinToString("\n")
+            .trim()
+    }
+
+    private fun isNonClickableStatusLine(line: String): Boolean {
+        val normalized = line
+            .lowercase(Locale.ROOT)
+            .replace(".", "")
+            .replace("!", "")
+            .replace("?", "")
+            .trim()
+        return normalized == "ничего не найдено"
     }
 
     private fun navigateToEngine(answer: String) {
