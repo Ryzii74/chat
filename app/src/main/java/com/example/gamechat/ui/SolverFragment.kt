@@ -79,6 +79,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         val modeButton = root.findViewById<Button>(R.id.solverModeButton)
         val loadMoreButton = root.findViewById<Button>(R.id.solverLoadMoreButton)
         selectedMode = SolverModes.byAlias(UserPreferences.getSolverModeAlias(requireContext()))
+            ?.takeUnless { it.alias == "morze" || it.alias == "dick" }
             ?: SolverModes.default()
         autoModeEnabled = UserPreferences.isSolverAutoEnabled(requireContext())
 
@@ -161,8 +162,6 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                     R.id.solverMode16 -> SolverModes.byId(16)
                     R.id.solverMode22 -> SolverModes.byId(22)
                     R.id.solverMode23 -> SolverModes.byId(23)
-                    R.id.solverMode28 -> SolverModes.byId(28)
-                    R.id.solverMode36 -> SolverModes.byId(36)
                     R.id.solverMode4 -> SolverModes.byId(4)
                     R.id.solverMode5 -> SolverModes.byId(5)
                     R.id.solverMode7 -> SolverModes.byId(7)
