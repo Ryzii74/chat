@@ -1,6 +1,9 @@
 package com.example.gamechat.ui.solver
 
 import android.content.Context
+import okhttp3.FormBody
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
@@ -9,6 +12,8 @@ import java.net.URLEncoder
 import java.net.URL
 import kotlin.collections.AbstractList
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 class SolverDataRepository(context: Context) {
     private val appContext = context.applicationContext
@@ -44,8 +49,18 @@ class SolverDataRepository(context: Context) {
         private var cachedWikislovar: PackedPhraseList? = null
         @Volatile
         private var cachedWikislovarPairs: PackedPhraseList? = null
+        @Volatile
+        private var cachedAssociationsRu: Map<String, List<String>>? = null
+        @Volatile
+        private var cachedAssociationsEn: Map<String, List<String>>? = null
         private val cacheLock = Any()
         private val kartaslovCache = mutableMapOf<String, List<String>>()
+        private val associationRemoteCache = ConcurrentHashMap<String, List<String>>()
+        private val associationHttpClient: OkHttpClient = OkHttpClient.Builder()
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(8, TimeUnit.SECONDS)
+            .writeTimeout(8, TimeUnit.SECONDS)
+            .build()
     }
 
     fun preloadWordDictionaries() {
@@ -81,11 +96,13 @@ class SolverDataRepository(context: Context) {
     }
 
     fun associationsForWord(word: String): List<String> {
-        val data = ensureData()
         val normalized = normalize(word)
         if (normalized.isBlank()) return emptyList()
-        return data.associationsRu[normalized]
-            ?: data.associationsEn[normalized]
+        fetchAssociationsRemote(normalized)?.let { remote ->
+            if (remote.isNotEmpty()) return remote
+        }
+        return ensureAssociationsRu()[normalized]
+            ?: ensureAssociationsEn()[normalized]
             ?: emptyList()
     }
 
@@ -228,8 +245,6 @@ class SolverDataRepository(context: Context) {
             val data = SolverData(
                 wordsRu = ensureRuWords(),
                 wordsEn = ensureEnWords(),
-                associationsRu = loadAssociations("solver/associations_ru.json"),
-                associationsEn = loadAssociations("solver/associations_en.json"),
                 phrases = ensurePhrases(),
                 pogovorki = ensurePogovorki(),
                 wikislovar = ensureWikislovar(),
@@ -239,6 +254,26 @@ class SolverDataRepository(context: Context) {
             )
             cachedData = data
             return data
+        }
+    }
+
+    private fun ensureAssociationsRu(): Map<String, List<String>> {
+        cachedAssociationsRu?.let { return it }
+        synchronized(cacheLock) {
+            cachedAssociationsRu?.let { return it }
+            val values = loadAssociations("solver/associations_ru.json")
+            cachedAssociationsRu = values
+            return values
+        }
+    }
+
+    private fun ensureAssociationsEn(): Map<String, List<String>> {
+        cachedAssociationsEn?.let { return it }
+        synchronized(cacheLock) {
+            cachedAssociationsEn?.let { return it }
+            val values = loadAssociations("solver/associations_en.json")
+            cachedAssociationsEn = values
+            return values
         }
     }
 
@@ -429,6 +464,49 @@ class SolverDataRepository(context: Context) {
             }
         }
         return result
+    }
+
+    private fun fetchAssociationsRemote(word: String): List<String>? {
+        associationRemoteCache[word]?.let { return it }
+        val requestBody = FormBody.Builder()
+            .add("word", word)
+            .add("max_count", "100")
+            .build()
+        val request = Request.Builder()
+            .url("https://sociation.org/ajax/word_associations/")
+            .post(requestBody)
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Mobile Safari/537.36"
+            )
+            .header("Origin", "https://sociation.org")
+            .header("Referer", "https://sociation.org/")
+            .header("X-Requested-With", "XMLHttpRequest")
+            .build()
+        return try {
+            associationHttpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val body = response.body?.string().orEmpty()
+                if (body.isBlank()) return null
+                val root = JSONObject(body)
+                val error = root.optJSONObject("error")
+                if (error != null) return null
+                val raw = root.optJSONArray("associations") ?: return null
+                val values = mutableListOf<String>()
+                for (index in 0 until raw.length()) {
+                    val row = raw.optJSONObject(index) ?: continue
+                    val name = normalize(row.optString("name"))
+                    if (name.isNotBlank()) values.add(name)
+                }
+                val deduped = values.distinct()
+                if (deduped.isNotEmpty()) {
+                    associationRemoteCache[word] = deduped
+                }
+                deduped
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun loadPackedCatalog(assetPath: String): PackedCatalog {
@@ -663,8 +741,6 @@ class SolverDataRepository(context: Context) {
     private data class SolverData(
         val wordsRu: List<String>,
         val wordsEn: List<String>,
-        val associationsRu: Map<String, List<String>>,
-        val associationsEn: Map<String, List<String>>,
         val phrases: PackedPhraseList,
         val pogovorki: PackedPhraseList,
         val wikislovar: PackedPhraseList,
