@@ -35,8 +35,13 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         private const val RESULT_PAGE_SIZE = 50
     }
 
+    private data class SolverReply(
+        val sender: String,
+        val text: String
+    )
+
     private val messages = mutableListOf<ChatMessage>()
-    private val pendingResultLines = mutableListOf<String>()
+    private val pendingReplies = mutableListOf<SolverReply>()
     private lateinit var adapter: ChatMessageAdapter
     private var selectedMode: SolverMode = SolverModes.default()
     private var autoModeEnabled: Boolean = false
@@ -115,7 +120,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             adapter.notifyItemInserted(messages.lastIndex)
             scrollToBottom(root)
             input.text?.clear()
-            pendingResultLines.clear()
+            pendingReplies.clear()
             updateLoadMoreButton(loadMoreButton)
             // Сохраняем историю после добавления пользовательского сообщения
             saveSolverHistory()
@@ -123,7 +128,6 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                 val autoEnabledNow = UserPreferences.isSolverAutoEnabled(requireContext())
                 autoModeEnabled = autoEnabledNow
                 val runtimeModes = detectModesForMessage(text) ?: listOf(selectedMode)
-                val autoDetected = autoEnabledNow && runtimeModes != listOf(selectedMode)
                 val result = if (runtimeModes.size == 1) {
                     solverEngine.resolve(runtimeModes.first(), text)
                 } else {
@@ -132,16 +136,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                     }
                 }
                 activity?.runOnUiThread {
-                    val decoratedResult = if (autoDetected) {
-                        if (runtimeModes.size == 1) {
-                            "[AUTO: ${runtimeModes.first().title}]\n$result"
-                        } else {
-                            "[AUTO: несколько режимов]\n$result"
-                        }
-                    } else {
-                        result
-                    }
-                    showResultWithPagination(decoratedResult, loadMoreButton)
+                    showResultWithPagination(result, loadMoreButton)
                     scrollToBottom(root)
                 }
             }.start()
@@ -299,11 +294,11 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         return null
     }
 
-    private fun addSystemMessage(text: String) {
+    private fun addSystemMessage(sender: String, text: String) {
         val formattedText = makeAnswersClickable(text)
         messages.add(
             ChatMessage(
-                senderName = "Решатель",
+                senderName = sender,
                 text = formattedText,
                 isOutgoing = false,
                 deliveryState = DeliveryState.NONE,
@@ -316,57 +311,79 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     }
 
     private fun showResultWithPagination(rawResult: String, loadMoreButton: Button) {
-        val lines = normalizeResultLines(rawResult)
-        if (lines.isEmpty()) {
-            addSystemMessage(rawResult)
-            pendingResultLines.clear()
+        val replies = normalizeResultReplies(rawResult)
+        if (replies.isEmpty()) {
+            addSystemMessage("Решатель", rawResult)
+            pendingReplies.clear()
             updateLoadMoreButton(loadMoreButton)
             return
         }
-        val firstPage = lines.take(RESULT_PAGE_SIZE)
-        addSystemMessage(firstPage.joinToString("\n"))
-        pendingResultLines.clear()
-        pendingResultLines.addAll(lines.drop(RESULT_PAGE_SIZE))
+
+        val firstPage = replies.take(RESULT_PAGE_SIZE)
+        firstPage.forEach { reply ->
+            addSystemMessage(reply.sender, reply.text)
+        }
+
+        pendingReplies.clear()
+        pendingReplies.addAll(replies.drop(RESULT_PAGE_SIZE))
         updateLoadMoreButton(loadMoreButton)
     }
 
     private fun appendNextResultPage(loadMoreButton: Button) {
-        if (pendingResultLines.isEmpty()) {
+        if (pendingReplies.isEmpty()) {
             updateLoadMoreButton(loadMoreButton)
             return
         }
-        val next = pendingResultLines.take(RESULT_PAGE_SIZE)
-        addSystemMessage(next.joinToString("\n"))
-        repeat(next.size) { pendingResultLines.removeAt(0) }
+        val next = pendingReplies.take(RESULT_PAGE_SIZE)
+        next.forEach { reply ->
+            addSystemMessage(reply.sender, reply.text)
+        }
+        repeat(next.size) { pendingReplies.removeAt(0) }
         updateLoadMoreButton(loadMoreButton)
     }
 
-    private fun normalizeResultLines(rawResult: String): List<String> {
-        val preparedLines = rawResult.split('\n')
+    private fun normalizeResultReplies(rawResult: String): List<SolverReply> {
+        val blocks = rawResult
+            .split(Regex("\\n\\s*\\n"))
             .map { it.trim() }
             .filter { it.isNotBlank() }
-        if (preparedLines.isEmpty()) return emptyList()
 
-        return preparedLines.flatMap { line ->
-            val index = line.indexOf(": ")
-            if (index > 0) {
-                val tail = line.substring(index + 2)
-                if (tail.contains(", ")) {
-                    val header = line.substring(0, index + 1)
-                    val values = tail.split(", ")
-                        .map { it.trim() }
-                        .filter { it.isNotBlank() }
-                    if (values.isNotEmpty()) {
-                        return@flatMap listOf(header) + values
-                    }
-                }
+        if (blocks.isEmpty()) return emptyList()
+
+        val replies = mutableListOf<SolverReply>()
+        blocks.forEach { block ->
+            val lines = block.split('\n')
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+            if (lines.isEmpty()) return@forEach
+
+            val firstLine = lines.first()
+            val header = extractReplyHeader(firstLine)
+            if (header != null) {
+                val content = lines.drop(1).joinToString("\n").trim()
+                val text = if (content.isBlank()) firstLine else content
+                replies.add(SolverReply(sender = header, text = text))
+            } else {
+                replies.add(SolverReply(sender = "Решатель", text = lines.joinToString("\n")))
             }
-            listOf(line)
         }
+        return replies
+    }
+
+    private fun extractReplyHeader(line: String): String? {
+        if (line.startsWith("[") && line.endsWith("]") && line.length > 2) {
+            return line.removePrefix("[").removeSuffix("]").trim()
+        }
+        val hasLetters = line.any { it.isLetter() }
+        val isUppercaseHeading = hasLetters && line == line.uppercase(Locale.ROOT)
+        if (isUppercaseHeading && !line.contains(':')) {
+            return line
+        }
+        return null
     }
 
     private fun updateLoadMoreButton(button: Button) {
-        button.visibility = if (pendingResultLines.isEmpty()) View.GONE else View.VISIBLE
+        button.visibility = if (pendingReplies.isEmpty()) View.GONE else View.VISIBLE
     }
 
     private fun scrollToBottom(root: View) {
