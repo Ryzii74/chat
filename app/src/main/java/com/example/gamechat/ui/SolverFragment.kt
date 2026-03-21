@@ -29,10 +29,13 @@ import com.example.gamechat.ui.solver.SolverModes
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 
 class SolverFragment : Fragment(R.layout.fragment_solver) {
     companion object {
         private const val RESULT_PAGE_SIZE = 50
+        private const val LOAD_MORE_LABEL = "Показать еще 50"
+        private const val LOAD_MORE_ID_PREFIX = "solver-loadmore-"
     }
 
     private data class SolverReply(
@@ -41,7 +44,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     )
 
     private val messages = mutableListOf<ChatMessage>()
-    private val pendingReplies = mutableListOf<SolverReply>()
+    private val pendingLinesByMessageId = mutableMapOf<String, MutableList<String>>()
     private lateinit var adapter: ChatMessageAdapter
     private var selectedMode: SolverMode = SolverModes.default()
     private var autoModeEnabled: Boolean = false
@@ -66,8 +69,12 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
 
     private fun setupMessages(root: View) {
         val recycler = root.findViewById<RecyclerView>(R.id.solverMessagesRecycler)
-        adapter = ChatMessageAdapter(messages, { }, { answer ->
-            navigateToEngine(answer)
+        adapter = ChatMessageAdapter(messages, { }, { message, answer ->
+            if (answer == LOAD_MORE_LABEL && message.id?.startsWith(LOAD_MORE_ID_PREFIX) == true) {
+                appendNextResultPage(message.id)
+            } else {
+                navigateToEngine(answer)
+            }
         })
         recycler.layoutManager = LinearLayoutManager(requireContext())
         recycler.adapter = adapter
@@ -120,7 +127,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             adapter.notifyItemInserted(messages.lastIndex)
             scrollToBottom(root)
             input.text?.clear()
-            pendingReplies.clear()
+            pendingLinesByMessageId.clear()
             updateLoadMoreButton(loadMoreButton)
             // Сохраняем историю после добавления пользовательского сообщения
             saveSolverHistory()
@@ -183,8 +190,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         }
 
         loadMoreButton.setOnClickListener {
-            appendNextResultPage(loadMoreButton)
-            scrollToBottom(root)
+            // External button is deprecated. Pagination is now inside each message.
         }
 
         renderModeButton()
@@ -291,10 +297,11 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         return null
     }
 
-    private fun addSystemMessage(sender: String, text: String) {
+    private fun addSystemMessage(sender: String, text: String, id: String? = null) {
         val formattedText = makeAnswersClickable(text)
         messages.add(
             ChatMessage(
+                id = id,
                 senderName = sender,
                 text = formattedText,
                 isOutgoing = false,
@@ -308,26 +315,83 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     }
 
     private fun showRepliesWithPagination(replies: List<SolverReply>, loadMoreButton: Button) {
-        val firstPage = replies.take(RESULT_PAGE_SIZE)
-        firstPage.forEach { reply ->
-            addSystemMessage(reply.sender, reply.text)
+        replies.forEach { reply ->
+            addPaginatedReply(reply)
         }
-
-        pendingReplies.clear()
-        pendingReplies.addAll(replies.drop(RESULT_PAGE_SIZE))
         updateLoadMoreButton(loadMoreButton)
     }
 
-    private fun appendNextResultPage(loadMoreButton: Button) {
-        if (pendingReplies.isEmpty()) {
-            updateLoadMoreButton(loadMoreButton)
+    private fun addPaginatedReply(reply: SolverReply) {
+        val lines = reply.text.split('\n')
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+
+        if (lines.isEmpty()) {
+            addSystemMessage(reply.sender, "ничего не найдено")
             return
         }
-        val next = pendingReplies.take(RESULT_PAGE_SIZE)
-        next.forEach { reply ->
-            addSystemMessage(reply.sender, reply.text)
+
+        if (lines.size <= RESULT_PAGE_SIZE || (lines.size == 1 && lines[0] == "ничего не найдено")) {
+            addSystemMessage(reply.sender, lines.joinToString("\n"))
+            return
         }
-        repeat(next.size) { pendingReplies.removeAt(0) }
+
+        val id = LOAD_MORE_ID_PREFIX + UUID.randomUUID().toString()
+        val firstChunk = lines.take(RESULT_PAGE_SIZE)
+        val rest = lines.drop(RESULT_PAGE_SIZE).toMutableList()
+        pendingLinesByMessageId[id] = rest
+        addSystemMessage(
+            sender = reply.sender,
+            text = firstChunk.joinToString("\n") + "\n" + LOAD_MORE_LABEL,
+            id = id
+        )
+    }
+
+    private fun appendNextResultPage(messageId: String?) {
+        if (messageId.isNullOrBlank()) return
+        val pending = pendingLinesByMessageId[messageId] ?: return
+        if (pending.isEmpty()) {
+            pendingLinesByMessageId.remove(messageId)
+            return
+        }
+        val next = pending.take(RESULT_PAGE_SIZE)
+        repeat(next.size) { pending.removeAt(0) }
+        if (pending.isEmpty()) {
+            pendingLinesByMessageId.remove(messageId)
+        }
+
+        val index = messages.indexOfFirst { it.id == messageId }
+        if (index < 0) return
+        val message = messages[index]
+        val plainCurrent = stripClickableMarkers(message.text)
+            .lines()
+            .map { it.trim() }
+            .filter { it.isNotBlank() && it != LOAD_MORE_LABEL }
+
+        val updatedLines = mutableListOf<String>()
+        updatedLines.addAll(plainCurrent)
+        updatedLines.addAll(next)
+        if (pendingLinesByMessageId.containsKey(messageId)) {
+            updatedLines.add(LOAD_MORE_LABEL)
+        }
+
+        messages[index] = message.copy(
+            text = makeAnswersClickable(updatedLines.joinToString("\n"))
+        )
+        adapter.notifyItemChanged(index)
+        saveSolverHistory()
+        view?.let { scrollToBottom(it) }
+    }
+
+    private fun stripClickableMarkers(text: String): String {
+        return text
+            .replace("[CLICKABLE]", "")
+            .replace("[/CLICKABLE]", "")
+            .trim()
+    }
+
+    private fun appendNextResultPage(loadMoreButton: Button) {
+        // External button is deprecated. Pagination is now inside each message.
         updateLoadMoreButton(loadMoreButton)
     }
 
@@ -342,7 +406,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     }
 
     private fun updateLoadMoreButton(button: Button) {
-        button.visibility = if (pendingReplies.isEmpty()) View.GONE else View.VISIBLE
+        button.visibility = View.GONE
     }
 
     private fun scrollToBottom(root: View) {

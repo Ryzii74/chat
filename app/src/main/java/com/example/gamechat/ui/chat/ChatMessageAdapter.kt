@@ -19,7 +19,7 @@ import com.example.gamechat.R
 class ChatMessageAdapter(
     private val items: List<ChatMessage>,
     private val onMessageLongPress: (ChatMessage) -> Unit,
-    private val onAnswerClick: ((String) -> Unit)? = null,
+    private val onAnswerClick: ((ChatMessage, String) -> Unit)? = null,
     private val onImageClick: ((Int) -> Unit)? = null
 ) : RecyclerView.Adapter<ChatMessageAdapter.MessageViewHolder>() {
 
@@ -53,10 +53,10 @@ class ChatMessageAdapter(
 
         fun bind(
             item: ChatMessage,
-            onAnswerClick: ((String) -> Unit)? = null,
+            onAnswerClick: ((ChatMessage, String) -> Unit)? = null,
             onImageClick: ((String) -> Unit)? = null
         ) {
-            val processedText = processClickableText(item.text, onAnswerClick)
+            val processedText = processClickableText(item, item.text, onAnswerClick)
             if (processedText.first != null) {
                 // Есть кликабельный текст
                 messageText.text = processedText.first
@@ -123,7 +123,11 @@ class ChatMessageAdapter(
             return (value * density).toInt()
         }
 
-        private fun processClickableText(text: String, onAnswerClick: ((String) -> Unit)? = null): Pair<SpannableStringBuilder?, List<String>> {
+        private fun processClickableText(
+            item: ChatMessage,
+            text: String,
+            onAnswerClick: ((ChatMessage, String) -> Unit)? = null
+        ): Pair<SpannableStringBuilder?, List<String>> {
             if (!text.contains("[CLICKABLE]")) {
                 return Pair(null, emptyList())
             }
@@ -150,7 +154,7 @@ class ChatMessageAdapter(
                         
                         val clickableSpan = object : ClickableSpan() {
                             override fun onClick(widget: View) {
-                                onAnswerClick?.invoke(clickableText)
+                                onAnswerClick?.invoke(item, clickableText)
                             }
                         }
                         
