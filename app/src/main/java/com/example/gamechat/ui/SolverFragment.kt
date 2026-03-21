@@ -342,7 +342,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         pendingLinesByMessageId[id] = rest
         addSystemMessage(
             sender = reply.sender,
-            text = firstChunk.joinToString("\n") + "\n" + LOAD_MORE_LABEL,
+            text = firstChunk.joinToString("\n") + "\n\n" + LOAD_MORE_LABEL,
             id = id
         )
     }
@@ -368,15 +368,15 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             .map { it.trim() }
             .filter { it.isNotBlank() && it != LOAD_MORE_LABEL }
 
-        val updatedLines = mutableListOf<String>()
-        updatedLines.addAll(plainCurrent)
-        updatedLines.addAll(next)
-        if (pendingLinesByMessageId.containsKey(messageId)) {
-            updatedLines.add(LOAD_MORE_LABEL)
+        val baseText = (plainCurrent + next).joinToString("\n")
+        val updatedText = if (pendingLinesByMessageId.containsKey(messageId)) {
+            "$baseText\n\n$LOAD_MORE_LABEL"
+        } else {
+            baseText
         }
 
         messages[index] = message.copy(
-            text = makeAnswersClickable(updatedLines.joinToString("\n"))
+            text = makeAnswersClickable(updatedText)
         )
         adapter.notifyItemChanged(index)
         saveSolverHistory()

@@ -3,7 +3,10 @@ package com.example.gamechat.ui.chat
 import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.method.LinkMovementMethod
+import android.text.style.BackgroundColorSpan
 import android.text.style.ClickableSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -15,6 +18,7 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import coil.load
 import com.example.gamechat.R
+import android.graphics.Typeface
 
 class ChatMessageAdapter(
     private val items: List<ChatMessage>,
@@ -164,6 +168,27 @@ class ChatMessageAdapter(
                             endIndexSpan,
                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
                         )
+
+                        if (isLoadMoreLabel(clickableText)) {
+                            spannableBuilder.setSpan(
+                                BackgroundColorSpan(0xFF2E7D32.toInt()),
+                                startIndex,
+                                endIndexSpan,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                            spannableBuilder.setSpan(
+                                ForegroundColorSpan(0xFFFFFFFF.toInt()),
+                                startIndex,
+                                endIndexSpan,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                            spannableBuilder.setSpan(
+                                StyleSpan(Typeface.BOLD),
+                                startIndex,
+                                endIndexSpan,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                        }
                     }
                     
                     spannableBuilder.append(remainingText)
@@ -173,6 +198,10 @@ class ChatMessageAdapter(
             }
             
             return Pair(spannableBuilder, clickableAnswers)
+        }
+
+        private fun isLoadMoreLabel(text: String): Boolean {
+            return text.trim().startsWith("Показать еще")
         }
 
         private fun bindImage(imageUrl: String?, onImageClick: ((String) -> Unit)? = null) {
