@@ -3,42 +3,47 @@ package com.example.gamechat.ui.solver
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
+import kotlin.collections.AbstractList
 import java.util.Locale
 
 class SolverDataRepository(context: Context) {
     private val appContext = context.applicationContext
 
-    @Volatile
-    private var cachedData: SolverData? = null
-    @Volatile
-    private var cachedRuWordsSet: Set<String>? = null
-    @Volatile
-    private var cachedEnWordsSet: Set<String>? = null
-    @Volatile
-    private var cachedSlovoformsSet: Set<String>? = null
-    @Volatile
-    private var cachedRaschCombinedSet: Set<String>? = null
-    private val kartaslovCache = mutableMapOf<String, List<String>>()
+    companion object {
+        @Volatile
+        private var cachedData: SolverData? = null
+        @Volatile
+        private var cachedRuWords: List<String>? = null
+        @Volatile
+        private var cachedEnWords: List<String>? = null
+        @Volatile
+        private var cachedRuWordsSet: Set<String>? = null
+        @Volatile
+        private var cachedEnWordsSet: Set<String>? = null
+        @Volatile
+        private var cachedSlovoformsSet: Set<String>? = null
+        @Volatile
+        private var cachedRaschCombinedSet: Set<String>? = null
+        private val cacheLock = Any()
+        private val kartaslovCache = mutableMapOf<String, List<String>>()
+    }
 
-    fun preloadAllData() {
-        val data = ensureData()
-        getRuWordsSet(data)
-        getEnWordsSet(data)
-        getSlovoformsSet()
-        getRaschCombinedSet(data)
+    fun preloadWordDictionaries() {
+        ensureRuWords()
+        ensureEnWords()
     }
 
     fun wordsForText(text: String): List<String> {
-        val data = ensureData()
         val hasRu = text.any { it in '\u0400'..'\u04FF' }
         val hasEn = text.any { it in 'a'..'z' || it in 'A'..'Z' }
         return when {
-            hasRu && !hasEn -> data.wordsRu
-            hasEn && !hasRu -> data.wordsEn
-            else -> data.wordsRu + data.wordsEn
+            hasRu && !hasEn -> ensureRuWords()
+            hasEn && !hasRu -> ensureEnWords()
+            else -> ensureRuWords() + ensureEnWords()
         }
     }
 
@@ -54,26 +59,25 @@ class SolverDataRepository(context: Context) {
     fun wordExistsForText(text: String, word: String): Boolean {
         val normalized = normalize(word)
         if (normalized.isBlank()) return false
-        val data = ensureData()
         val hasRu = text.any { it in '\u0400'..'\u04FF' }
         val hasEn = text.any { it in 'a'..'z' || it in 'A'..'Z' }
         return when {
-            hasRu && !hasEn -> getRuWordsSet(data).contains(normalized)
-            hasEn && !hasRu -> getEnWordsSet(data).contains(normalized)
-            else -> getRuWordsSet(data).contains(normalized) || getEnWordsSet(data).contains(normalized)
+            hasRu && !hasEn -> getRuWordsSet().contains(normalized)
+            hasEn && !hasRu -> getEnWordsSet().contains(normalized)
+            else -> getRuWordsSet().contains(normalized) || getEnWordsSet().contains(normalized)
         }
     }
 
     fun wordExistsRu(word: String): Boolean {
         val normalized = normalize(word)
         if (normalized.isBlank()) return false
-        return getRuWordsSet(ensureData()).contains(normalized)
+        return getRuWordsSet().contains(normalized)
     }
 
     fun wordExistsEn(word: String): Boolean {
         val normalized = normalize(word)
         if (normalized.isBlank()) return false
-        return getEnWordsSet(ensureData()).contains(normalized)
+        return getEnWordsSet().contains(normalized)
     }
 
     fun searchBooks(query: String): List<String> {
@@ -98,7 +102,7 @@ class SolverDataRepository(context: Context) {
 
     fun getSlovoformsSet(): Set<String> {
         cachedSlovoformsSet?.let { return it }
-        synchronized(this) {
+        synchronized(cacheLock) {
             cachedSlovoformsSet?.let { return it }
             val set = loadWords("solver/russian-with-slovoforms.txt").toHashSet()
             cachedSlovoformsSet = set
@@ -185,11 +189,11 @@ class SolverDataRepository(context: Context) {
 
     private fun ensureData(): SolverData {
         cachedData?.let { return it }
-        synchronized(this) {
+        synchronized(cacheLock) {
             cachedData?.let { return it }
             val data = SolverData(
-                wordsRu = loadWords("solver/words-ru-merged.txt"),
-                wordsEn = loadWords("solver/words-en-merged.txt"),
+                wordsRu = ensureRuWords(),
+                wordsEn = ensureEnWords(),
                 associationsRu = loadAssociations("solver/associations_ru.json"),
                 associationsEn = loadAssociations("solver/associations_en.json"),
                 books = loadCatalogEntries("solver/books.txt"),
@@ -217,9 +221,29 @@ class SolverDataRepository(context: Context) {
         }
     }
 
+    private fun ensureRuWords(): List<String> {
+        cachedRuWords?.let { return it }
+        synchronized(cacheLock) {
+            cachedRuWords?.let { return it }
+            val words = loadWords("solver/words-ru-merged.txt")
+            cachedRuWords = words
+            return words
+        }
+    }
+
+    private fun ensureEnWords(): List<String> {
+        cachedEnWords?.let { return it }
+        synchronized(cacheLock) {
+            cachedEnWords?.let { return it }
+            val words = loadWords("solver/words-en-merged.txt")
+            cachedEnWords = words
+            return words
+        }
+    }
+
     private fun getRaschCombinedSet(data: SolverData): Set<String> {
         cachedRaschCombinedSet?.let { return it }
-        synchronized(this) {
+        synchronized(cacheLock) {
             cachedRaschCombinedSet?.let { return it }
             val set = linkedSetOf<String>()
             data.wordsRu.forEach { set.add(normalizeForRaschObject(it)) }
@@ -234,45 +258,45 @@ class SolverDataRepository(context: Context) {
         }
     }
 
-    private fun getRuWordsSet(data: SolverData): Set<String> {
+    private fun getRuWordsSet(): Set<String> {
         cachedRuWordsSet?.let { return it }
-        synchronized(this) {
+        synchronized(cacheLock) {
             cachedRuWordsSet?.let { return it }
-            val set = data.wordsRu.toHashSet()
+            val set = ensureRuWords().toHashSet()
             cachedRuWordsSet = set
             return set
         }
     }
 
-    private fun getEnWordsSet(data: SolverData): Set<String> {
+    private fun getEnWordsSet(): Set<String> {
         cachedEnWordsSet?.let { return it }
-        synchronized(this) {
+        synchronized(cacheLock) {
             cachedEnWordsSet?.let { return it }
-            val set = data.wordsEn.toHashSet()
+            val set = ensureEnWords().toHashSet()
             cachedEnWordsSet = set
             return set
         }
     }
 
     private fun loadWords(assetPath: String): List<String> {
-        val words = linkedSetOf<String>()
+        val output = ByteArrayOutputStream()
+        val offsets = IntAccumulator()
+        offsets.add(0)
+
         appContext.assets.open(assetPath).bufferedReader().useLines { sequence ->
             sequence.forEach { raw ->
                 val word = normalize(raw)
                 if (word.isNotBlank()) {
-                    words.add(word)
+                    output.write(word.toByteArray(Charsets.UTF_8))
+                    output.write('\n'.code)
+                    offsets.add(output.size())
                 }
             }
         }
-        return words.toList()
-    }
-
-    private fun loadMergedWords(vararg assetPaths: String): List<String> {
-        val words = linkedSetOf<String>()
-        assetPaths.forEach { path ->
-            loadWords(path).forEach { words.add(it) }
-        }
-        return words.toList()
+        return PackedWordList(
+            data = output.toByteArray(),
+            offsets = offsets.toIntArray()
+        )
     }
 
     private fun loadAssociations(assetPath: String): Map<String, List<String>> {
@@ -490,6 +514,42 @@ class SolverDataRepository(context: Context) {
         val dslov: List<PhraseEntry>,
         val mendeleev: List<MendeleevElement>
     )
+
+    private class PackedWordList(
+        private val data: ByteArray,
+        private val offsets: IntArray
+    ) : AbstractList<String>() {
+        override val size: Int
+            get() = offsets.size - 1
+
+        override fun get(index: Int): String {
+            val start = offsets[index]
+            val endExclusive = offsets[index + 1]
+            val payloadEndExclusive = if (
+                endExclusive > start && data[endExclusive - 1] == '\n'.code.toByte()
+            ) {
+                endExclusive - 1
+            } else {
+                endExclusive
+            }
+            return data.decodeToString(startIndex = start, endIndex = payloadEndExclusive)
+        }
+    }
+
+    private class IntAccumulator(initialCapacity: Int = 1024) {
+        private var values = IntArray(initialCapacity)
+        private var size = 0
+
+        fun add(value: Int) {
+            if (size == values.size) {
+                values = values.copyOf(values.size * 2)
+            }
+            values[size] = value
+            size++
+        }
+
+        fun toIntArray(): IntArray = values.copyOf(size)
+    }
 
     private data class CatalogEntry(
         val title: String,
