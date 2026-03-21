@@ -458,6 +458,7 @@ class MainActivity : AppCompatActivity(), EncounterAuthFragment.Host, EngineFrag
         Thread {
             try {
                 SolverDataRepository(applicationContext).preloadWordDictionaries()
+                SolverDataRepository(applicationContext).preloadCatalogDictionaries()
             } catch (e: Exception) {
                 Log.e(TAG, "Solver preload failed: ${e.message}", e)
             } finally {

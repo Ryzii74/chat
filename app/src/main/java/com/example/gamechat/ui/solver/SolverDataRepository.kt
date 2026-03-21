@@ -28,6 +28,12 @@ class SolverDataRepository(context: Context) {
         private var cachedSlovoformsSet: Set<String>? = null
         @Volatile
         private var cachedRaschCombinedSet: Set<String>? = null
+        @Volatile
+        private var cachedBooks: List<CatalogEntry>? = null
+        @Volatile
+        private var cachedFilms: List<CatalogEntry>? = null
+        @Volatile
+        private var cachedPaintings: List<CatalogEntry>? = null
         private val cacheLock = Any()
         private val kartaslovCache = mutableMapOf<String, List<String>>()
     }
@@ -35,6 +41,12 @@ class SolverDataRepository(context: Context) {
     fun preloadWordDictionaries() {
         ensureRuWords()
         ensureEnWords()
+    }
+
+    fun preloadCatalogDictionaries() {
+        ensureBooks()
+        ensureFilms()
+        ensurePaintings()
     }
 
     fun wordsForText(text: String): List<String> {
@@ -81,22 +93,22 @@ class SolverDataRepository(context: Context) {
     }
 
     fun searchBooks(query: String): List<String> {
-        return searchCatalog(query, ensureData().books)
+        return searchCatalog(query, ensureBooks())
     }
 
     fun searchFilms(query: String): List<String> {
-        return searchCatalog(query, ensureData().films)
+        return searchCatalog(query, ensureFilms())
     }
 
     fun searchPaintings(query: String): List<String> {
-        return searchCatalog(query, ensureData().paintings)
+        return searchCatalog(query, ensurePaintings())
     }
 
-    fun getBookTitles(): List<String> = ensureData().books.map { it.title }
+    fun getBookTitles(): List<String> = ensureBooks().map { it.title }
 
-    fun getFilmTitles(): List<String> = ensureData().films.map { it.title }
+    fun getFilmTitles(): List<String> = ensureFilms().map { it.title }
 
-    fun getPaintingTitles(): List<String> = ensureData().paintings.map { it.title }
+    fun getPaintingTitles(): List<String> = ensurePaintings().map { it.title }
 
     fun getMendeleevElements(): List<MendeleevElement> = ensureData().mendeleev
 
@@ -196,9 +208,9 @@ class SolverDataRepository(context: Context) {
                 wordsEn = ensureEnWords(),
                 associationsRu = loadAssociations("solver/associations_ru.json"),
                 associationsEn = loadAssociations("solver/associations_en.json"),
-                books = loadCatalogEntries("solver/books.txt"),
-                films = loadCatalogEntries("solver/films.txt"),
-                paintings = loadCatalogEntries("solver/paintings.txt"),
+                books = ensureBooks(),
+                films = ensureFilms(),
+                paintings = ensurePaintings(),
                 phrases = loadPhraseEntries(
                     assetPath = "solver/phrases.txt",
                     splitByCarriageReturn = true,
@@ -228,6 +240,36 @@ class SolverDataRepository(context: Context) {
             val words = loadWords("solver/words-ru-merged.txt")
             cachedRuWords = words
             return words
+        }
+    }
+
+    private fun ensureBooks(): List<CatalogEntry> {
+        cachedBooks?.let { return it }
+        synchronized(cacheLock) {
+            cachedBooks?.let { return it }
+            val books = loadCatalogEntries("solver/books.txt")
+            cachedBooks = books
+            return books
+        }
+    }
+
+    private fun ensureFilms(): List<CatalogEntry> {
+        cachedFilms?.let { return it }
+        synchronized(cacheLock) {
+            cachedFilms?.let { return it }
+            val films = loadCatalogEntries("solver/films.txt")
+            cachedFilms = films
+            return films
+        }
+    }
+
+    private fun ensurePaintings(): List<CatalogEntry> {
+        cachedPaintings?.let { return it }
+        synchronized(cacheLock) {
+            cachedPaintings?.let { return it }
+            val paintings = loadCatalogEntries("solver/paintings.txt")
+            cachedPaintings = paintings
+            return paintings
         }
     }
 
