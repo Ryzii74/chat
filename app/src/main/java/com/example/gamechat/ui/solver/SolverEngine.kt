@@ -602,9 +602,7 @@ class SolverEngine(
             val translation = text.split(' ')
                 .map { group -> translateMorzeGroup(group, symbols) ?: "?" }
                 .joinToString("")
-            val regex = Regex("^" + translation.replace("?", "\\S?") + "$")
-            val words = dictionaryArray.filter { regex.matches(if (isRu) normalize(it) else it.lowercase(Locale.ROOT)) }.take(50)
-            return listOf(translation) + words
+            return listOf(translation)
         }
         if (text.length > 24) return listOf("Слишком длинный ввод")
         val one = translateMorzeGroup(text, symbols)
