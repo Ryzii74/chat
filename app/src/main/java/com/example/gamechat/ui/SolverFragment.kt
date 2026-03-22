@@ -441,6 +441,15 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                 )
             }
         }
+        if (mode.alias == "roman") {
+            val raw = solverEngine.resolve(mode, inputText).trim()
+            val text = if (raw.equals("Нет результатов", ignoreCase = true) || raw.isBlank()) {
+                "ничего не найдено"
+            } else {
+                raw
+            }
+            return listOf(SolverReply(sender = mode.title, text = text))
+        }
         val raw = solverEngine.resolve(mode, inputText)
         return listOf(buildReplyForMode(mode, raw))
     }
