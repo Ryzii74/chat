@@ -135,9 +135,8 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                 val autoEnabledNow = UserPreferences.isSolverAutoEnabled(requireContext())
                 autoModeEnabled = autoEnabledNow
                 val runtimeModes = detectModesForMessage(text) ?: listOf(selectedMode)
-                val replies = runtimeModes.map { mode ->
-                    val raw = solverEngine.resolve(mode, text)
-                    buildReplyForMode(mode, raw)
+                val replies = runtimeModes.flatMap { mode ->
+                    buildRepliesForMode(mode, text)
                 }
                 activity?.runOnUiThread {
                     showRepliesWithPagination(replies, loadMoreButton)
@@ -398,6 +397,21 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         }
         appendNextResultPage(messageId)
         updateLoadMoreButton(loadMoreButton)
+    }
+
+    private fun buildRepliesForMode(mode: SolverMode, inputText: String): List<SolverReply> {
+        if (mode.alias == "any") {
+            return solverEngine.resolveAnyBreakdown(inputText).map { methodResult ->
+                val text = if (methodResult.answers.isEmpty()) {
+                    "ничего не найдено"
+                } else {
+                    methodResult.answers.joinToString("\n")
+                }
+                SolverReply(sender = methodResult.title, text = text)
+            }
+        }
+        val raw = solverEngine.resolve(mode, inputText)
+        return listOf(buildReplyForMode(mode, raw))
     }
 
     private fun buildReplyForMode(mode: SolverMode, rawResult: String): SolverReply {

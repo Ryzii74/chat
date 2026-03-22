@@ -5,6 +5,11 @@ import java.util.Locale
 class SolverEngine(
     private val repository: SolverDataRepository
 ) {
+    data class AnyFormatResult(
+        val title: String,
+        val answers: List<String>
+    )
+
     fun resolve(mode: SolverMode, rawInput: String): String {
         val input = normalize(rawInput)
         if (input.isBlank()) return "Введите слово или шаблон."
@@ -329,20 +334,38 @@ class SolverEngine(
     }
 
     private fun resolveAny(rawInput: String): String {
-        val taskResults = linkedMapOf<String, List<String>>()
-        taskResults["metagramma"] = resolveSeveralWordsList(rawInput, ::isMetagramma)
-        taskResults["logogrif"] = resolveSeveralWordsList(rawInput, ::isLogogrif)
-        taskResults["plusogramma"] = resolveSeveralWordsList(rawInput, ::isPlusogramma)
-        taskResults["anagramma"] = resolveSeveralWordsList(rawInput, ::isAnagrammaSimple)
-        taskResults["brukva"] = resolveSeveralWordsList(rawInput, ::isBrukva)
-
-        val nonEmpty = taskResults.filterValues { it.isNotEmpty() }
+        val nonEmpty = resolveAnyBreakdown(rawInput).filter { it.answers.isNotEmpty() }
         if (nonEmpty.isEmpty()) {
             return "Нет результатов"
         }
-        return nonEmpty.entries.joinToString("\n\n") { (task, answers) ->
-            "$task\n${answers.take(80).joinToString(" ")}"
+        return nonEmpty.joinToString("\n\n") { result ->
+            "${result.title}\n${result.answers.take(80).joinToString(" ")}"
         }
+    }
+
+    fun resolveAnyBreakdown(rawInput: String): List<AnyFormatResult> {
+        return listOf(
+            AnyFormatResult(
+                title = "Метаграмма",
+                answers = resolveSeveralWordsList(rawInput, ::isMetagramma)
+            ),
+            AnyFormatResult(
+                title = "Логогриф",
+                answers = resolveSeveralWordsList(rawInput, ::isLogogrif)
+            ),
+            AnyFormatResult(
+                title = "Плюсограмма",
+                answers = resolveSeveralWordsList(rawInput, ::isPlusogramma)
+            ),
+            AnyFormatResult(
+                title = "Анаграмма",
+                answers = resolveSeveralWordsList(rawInput, ::isAnagrammaSimple)
+            ),
+            AnyFormatResult(
+                title = "Брюква",
+                answers = resolveSeveralWordsList(rawInput, ::isBrukva)
+            )
+        )
     }
 
     private fun resolveCross(rawInput: String): String {
