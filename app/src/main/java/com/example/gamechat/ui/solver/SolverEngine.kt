@@ -544,7 +544,7 @@ class SolverEngine(
             .distinct()
             .take(200)
             .toList()
-        return if (answers.isEmpty()) "Нет результатов" else answers.joinToString(" ")
+        return if (answers.isEmpty()) "Нет результатов" else answers.joinToString("\n")
     }
 
     private fun resolveLongword(rawInput: String): String {
