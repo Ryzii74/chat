@@ -432,12 +432,12 @@ class SolverEngine(
 
         val blocks = mutableListOf<String>()
         if (result.isNotEmpty()) {
-            blocks.add(result.sortedByDescending { it.length }.take(120).joinToString("\n"))
+            blocks.add(result.sortedByDescending { it.length }.joinToString("\n"))
         }
         if (words.size > 2 && resultAll.isNotEmpty()) {
             blocks.add(
                 "СОВПАДЕНИЯ ВСЕХ СЛОВ\n" +
-                    resultAll.sortedByDescending { it.length }.take(120).joinToString("\n")
+                    resultAll.sortedByDescending { it.length }.joinToString("\n")
             )
         }
         return if (blocks.isEmpty()) "Нет результатов" else blocks.joinToString("\n\n")

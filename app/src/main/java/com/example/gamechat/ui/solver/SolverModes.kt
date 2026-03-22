@@ -18,6 +18,7 @@ object SolverModes {
         SolverMode(id = 12, alias = "meta", title = "Метаграммы"),
         SolverMode(id = 28, alias = "morze", title = "Азбука Морзе"),
         SolverMode(id = 14, alias = "logo", title = "Логогрифы"),
+        SolverMode(id = 15, alias = "cross", title = "Общая часть"),
         SolverMode(id = 16, alias = "any", title = "Все форматы"),
         SolverMode(id = 13, alias = "brukva", title = "Брюква"),
         SolverMode(id = 22, alias = "subword", title = "Подслова"),
@@ -54,6 +55,7 @@ object SolverModes {
             "plus" -> "plus"
             "anagramma2" -> "anagramma2"
             "maskword" -> "maskword"
+            "cross" -> "cross"
             "meta" -> "meta"
             "brukva" -> "brukva"
             "logo" -> "logo"
