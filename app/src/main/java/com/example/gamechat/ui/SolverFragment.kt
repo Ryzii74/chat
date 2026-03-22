@@ -38,6 +38,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         private const val LOAD_MORE_LABEL = "Показать еще 50"
         private const val LOAD_MORE_ID_PREFIX = "solver-loadmore-"
         private const val NEXT_PAGE_DIVIDER = "[──────── Следующие 50 ────────]"
+        private const val REAL_WORD_MARKER = "[REAL_WORD]"
     }
 
     private data class SolverReply(
@@ -448,6 +449,14 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             } else {
                 raw
             }
+            return listOf(SolverReply(sender = mode.title, text = text))
+        }
+        if (mode.alias == "caesar") {
+            val lines = solverEngine.resolveCaesarBreakdown(inputText).map { result ->
+                val marker = if (result.isRealWord) REAL_WORD_MARKER else ""
+                "${result.shift}: [CLICKABLE]${result.decoded}[/CLICKABLE]$marker"
+            }
+            val text = if (lines.isEmpty()) "ничего не найдено" else lines.joinToString("\n")
             return listOf(SolverReply(sender = mode.title, text = text))
         }
         val raw = solverEngine.resolve(mode, inputText)

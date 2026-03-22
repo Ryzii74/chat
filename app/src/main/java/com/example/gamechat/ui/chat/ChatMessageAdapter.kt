@@ -26,6 +26,9 @@ class ChatMessageAdapter(
     private val onAnswerClick: ((ChatMessage, String) -> Unit)? = null,
     private val onImageClick: ((Int) -> Unit)? = null
 ) : RecyclerView.Adapter<ChatMessageAdapter.MessageViewHolder>() {
+    companion object {
+        private const val REAL_WORD_MARKER = "[REAL_WORD]"
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
         val view = LayoutInflater.from(parent.context)
@@ -147,7 +150,9 @@ class ChatMessageAdapter(
                 val endIndex = part.indexOf("[/CLICKABLE]")
                 if (endIndex != -1) {
                     val clickableText = part.substring(0, endIndex).trim()
-                    val remainingText = part.substring(endIndex + "[/CLICKABLE]".length)
+                    val remainingTextRaw = part.substring(endIndex + "[/CLICKABLE]".length)
+                    val isRealWord = remainingTextRaw.contains(REAL_WORD_MARKER)
+                    val remainingText = remainingTextRaw.replace(REAL_WORD_MARKER, "")
                     
                     if (clickableText.isNotEmpty()) {
                         clickableAnswers.add(clickableText)
@@ -178,6 +183,19 @@ class ChatMessageAdapter(
                             )
                             spannableBuilder.setSpan(
                                 ForegroundColorSpan(0xFFFFFFFF.toInt()),
+                                startIndex,
+                                endIndexSpan,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                            spannableBuilder.setSpan(
+                                StyleSpan(Typeface.BOLD),
+                                startIndex,
+                                endIndexSpan,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                            )
+                        } else if (isRealWord) {
+                            spannableBuilder.setSpan(
+                                ForegroundColorSpan(0xFFFF5252.toInt()),
                                 startIndex,
                                 endIndexSpan,
                                 Spanned.SPAN_EXCLUSIVE_EXCLUSIVE

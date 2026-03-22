@@ -25,6 +25,12 @@ class SolverEngine(
         val answers: List<String>
     )
 
+    data class CaesarResult(
+        val shift: Int,
+        val decoded: String,
+        val isRealWord: Boolean
+    )
+
     fun resolve(mode: SolverMode, rawInput: String): String {
         val input = normalize(rawInput)
         if (input.isBlank()) return "Введите слово или шаблон."
@@ -614,17 +620,34 @@ class SolverEngine(
     }
 
     private fun resolveCaesar(input: String): String {
+        return resolveCaesarBreakdown(input)
+            .joinToString("\n") { result ->
+                "${result.shift}: ${getWordsFromLine(result.decoded)}"
+            }
+    }
+
+    fun resolveCaesarBreakdown(input: String): List<CaesarResult> {
         val dictSet = repository.wordsForText(input).asSequence()
             .map(::normalize)
             .toSet()
-        val responses = mutableListOf<String>()
+        val responses = mutableListOf<CaesarResult>()
         for (i in 1..32) {
             val key = lettersRu.getOrNull(i)?.toString().orEmpty()
             if (key.isBlank()) continue
             val decoded = vigenereTransform(input, key, encrypt = false)
-            responses.add("$i: ${getWordsFromLine(decoded, dictSet)}")
+            val normalizedDecoded = normalize(decoded)
+            val isRealWord = decoded.isNotBlank() &&
+                !decoded.contains(' ') &&
+                dictSet.contains(normalizedDecoded)
+            responses.add(
+                CaesarResult(
+                    shift = i,
+                    decoded = decoded,
+                    isRealWord = isRealWord
+                )
+            )
         }
-        return responses.joinToString("\n")
+        return responses
     }
 
     private fun resolveMorze(rawInput: String): String {
