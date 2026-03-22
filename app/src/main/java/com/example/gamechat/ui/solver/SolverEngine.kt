@@ -142,18 +142,25 @@ class SolverEngine(
 
     private fun resolveMaskWord(input: String): String {
         val source = repository.wordsForText(input)
-        val regex = Regex(
-            "^" + escapeForRegex(input).replace("\\?", "(\\\\S*)") + "$",
-            setOf(RegexOption.IGNORE_CASE)
-        )
+        val regex = runCatching {
+            Regex(
+                "^" + input.replace("?", "(\\\\S*)") + "$",
+                setOf(RegexOption.IGNORE_CASE)
+            )
+        }.getOrNull() ?: return "По маске ничего не найдено."
 
         val answers = mutableListOf<String>()
         source.forEach { word ->
             val match = regex.matchEntire(word) ?: return@forEach
             if (match.groupValues.size < 2) return@forEach
-            val insertedWord = normalize(match.groupValues[1])
+            val insertedWord = match.groupValues[1]
             if (!repository.wordExistsForText(input, insertedWord)) return@forEach
-            answers.add(word.replace(match.groupValues[1], match.groupValues[1].uppercase(Locale.ROOT)))
+            answers.add(
+                word.replaceFirst(
+                    insertedWord,
+                    insertedWord.uppercase(Locale.ROOT)
+                )
+            )
         }
 
         val limited = answers.distinct().take(PAGINATION_RESULTS_LIMIT)

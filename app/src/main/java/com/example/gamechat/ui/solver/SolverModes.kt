@@ -13,6 +13,7 @@ object SolverModes {
         SolverMode(id = 2, alias = "association", title = "Ассоциации"),
         SolverMode(id = 36, alias = "dick", title = "Расчлененка"),
         SolverMode(id = 3, alias = "mask", title = "Маска"),
+        SolverMode(id = 9, alias = "maskword", title = "Маска + слово"),
         SolverMode(id = 7, alias = "phrase", title = "Фразеологизмы"),
         SolverMode(id = 12, alias = "meta", title = "Метаграммы"),
         SolverMode(id = 28, alias = "morze", title = "Азбука Морзе"),
@@ -52,6 +53,7 @@ object SolverModes {
             "film" -> "film"
             "plus" -> "plus"
             "anagramma2" -> "anagramma2"
+            "maskword" -> "maskword"
             "meta" -> "meta"
             "brukva" -> "brukva"
             "logo" -> "logo"
