@@ -426,6 +426,19 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                 SolverReply(sender = result.title, text = text)
             }
         }
+        if (mode.alias == "gapoifika") {
+            val parts = solverEngine.resolveGapoifikaBreakdown(inputText)
+                .filter { it.answers.isNotEmpty() }
+            if (parts.isEmpty()) {
+                return listOf(SolverReply(sender = mode.title, text = "ничего не найдено"))
+            }
+            return parts.map { result ->
+                SolverReply(
+                    sender = result.title,
+                    text = result.answers.joinToString("\n")
+                )
+            }
+        }
         val raw = solverEngine.resolve(mode, inputText)
         return listOf(buildReplyForMode(mode, raw))
     }

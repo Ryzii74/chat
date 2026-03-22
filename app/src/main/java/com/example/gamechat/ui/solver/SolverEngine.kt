@@ -20,6 +20,11 @@ class SolverEngine(
         val answers: List<String>
     )
 
+    data class GapoifikaResult(
+        val title: String,
+        val answers: List<String>
+    )
+
     fun resolve(mode: SolverMode, rawInput: String): String {
         val input = normalize(rawInput)
         if (input.isBlank()) return "Введите слово или шаблон."
@@ -484,25 +489,24 @@ class SolverEngine(
     }
 
     private fun resolveGapoifika(input: String): String {
+        val parts = resolveGapoifikaBreakdown(input).filter { it.answers.isNotEmpty() }
+        if (parts.isEmpty()) {
+            return "Ничего не найдено!"
+        }
+        return parts.joinToString("\n\n") { "${it.title}\n${it.answers.joinToString("\n")}" }
+    }
+
+    fun resolveGapoifikaBreakdown(input: String): List<GapoifikaResult> {
         val text = normalize(input)
         val foundBooks = repository.getBookTitles().filter { isGapoifika(text, it) }
         val foundFilms = repository.getFilmTitles().filter { isGapoifika(text, it) }
         val foundPaintings = repository.getPaintingTitles().filter { isGapoifika(text, it) }
 
-        if (foundBooks.isEmpty() && foundFilms.isEmpty() && foundPaintings.isEmpty()) {
-            return "Ничего не найдено!"
-        }
-        val blocks = mutableListOf<String>()
-        if (foundPaintings.isNotEmpty()) {
-            blocks.add("Картины\n${foundPaintings.joinToString("\n")}")
-        }
-        if (foundBooks.isNotEmpty()) {
-            blocks.add("Книги\n${foundBooks.joinToString("\n")}")
-        }
-        if (foundFilms.isNotEmpty()) {
-            blocks.add("Фильмы\n${foundFilms.joinToString("\n")}")
-        }
-        return blocks.joinToString("\n\n")
+        return listOf(
+            GapoifikaResult(title = "Картины", answers = foundPaintings),
+            GapoifikaResult(title = "Книги", answers = foundBooks),
+            GapoifikaResult(title = "Фильмы", answers = foundFilms)
+        )
     }
 
     private fun resolveSs(input: String): String {
