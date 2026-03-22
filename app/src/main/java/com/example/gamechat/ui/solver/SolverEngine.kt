@@ -153,6 +153,9 @@ class SolverEngine(
 
     private fun resolveMaskWord(input: String): String {
         val source = repository.wordsForText(input)
+        val sourceWordsSet = source.asSequence()
+            .map(::normalize)
+            .toSet()
         val regex = runCatching {
             Regex(
                 "^" + input.replace("?", "(\\\\S*)") + "$",
@@ -164,12 +167,12 @@ class SolverEngine(
         source.forEach { word ->
             val match = regex.matchEntire(word) ?: return@forEach
             if (match.groupValues.size < 2) return@forEach
-            val insertedWord = match.groupValues[1]
-            if (!repository.wordExistsForText(input, insertedWord)) return@forEach
+            val insertedWord = normalize(match.groupValues[1])
+            if (!sourceWordsSet.contains(insertedWord)) return@forEach
             answers.add(
                 word.replaceFirst(
-                    insertedWord,
-                    insertedWord.uppercase(Locale.ROOT)
+                    match.groupValues[1],
+                    match.groupValues[1].uppercase(Locale.ROOT)
                 )
             )
         }
