@@ -51,7 +51,7 @@ class SolverEngine(
             "sborka" -> resolveSborka(rawInput)
             "sborkaline" -> resolveSborkaLine(rawInput)
             "vigenere" -> resolveVigenere(rawInput)
-            "caesar" -> resolveCaesar(input)
+            "caesar" -> resolveCaesar(rawInput)
             "morze" -> resolveMorze(rawInput)
             "bacon" -> resolveBacon(rawInput)
             "bodo" -> resolveBodo(rawInput)
