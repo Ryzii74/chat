@@ -15,6 +15,11 @@ class SolverEngine(
         val answers: List<String>
     )
 
+    data class PlusResult(
+        val title: String,
+        val answers: List<String>
+    )
+
     fun resolve(mode: SolverMode, rawInput: String): String {
         val input = normalize(rawInput)
         if (input.isBlank()) return "Введите слово или шаблон."
@@ -288,46 +293,28 @@ class SolverEngine(
     }
 
     private fun resolvePlus(rawInput: String): String {
-        val words = rawInput.trim().split("\\s+".toRegex()).filter { it.isNotBlank() }
-        if (words.isEmpty()) return "Введите слово."
-        val answers: List<String> = if (words.size == 1) {
-            val target = normalize(words.first())
-            repository.wordsForText(target)
-                .asSequence()
-                .map(::normalize)
-                .filter { isPlusogramma(it, target) }
-                .distinct()
-                .toList()
-        } else {
-            val word1Raw = words[0]
-            val word2Raw = words[1]
-            val source1: List<String>
-            val source2: List<String>
-            val formatter: (String, String) -> String
-            if (word1Raw.endsWith("!")) {
-                source1 = listOf(normalize(word1Raw.removeSuffix("!")))
-                source2 = repository.associationsForWord(word2Raw)
-                formatter = { _, b -> b }
+        val results = resolvePlusBreakdown(rawInput)
+        return results.joinToString("\n\n") { result ->
+            if (result.answers.isEmpty()) {
+                "${result.title}\nНет результатов"
             } else {
-                source1 = repository.associationsForWord(word1Raw)
-                source2 = repository.associationsForWord(word2Raw)
-                formatter = { a, b -> "$a $b" }
+                "${result.title}\n${result.answers.take(80).joinToString(" ")}"
             }
-            val tmp = mutableListOf<String>()
-            source1.forEach { a ->
-                source2.forEach { b ->
-                    if (isPlusogramma(a, b)) tmp.add(formatter(a, b))
-                }
-            }
-            tmp.distinct()
         }
-        if (answers.isEmpty()) {
-            return "ПОКОРОЧЕ\nНет результатов\n\nПОДЛИННЕЕ\nНет результатов"
-        }
-        val grouped = answers.groupBy { it.length }.toSortedMap()
-        return grouped.entries.joinToString("\n\n") { (len, vals) ->
-            "$len\n${vals.take(80).joinToString(" ")}"
-        }
+    }
+
+    fun resolvePlusBreakdown(rawInput: String): List<PlusResult> {
+        val inputWords = rawInput.trim().split("\\s+".toRegex()).filter { it.isNotBlank() }
+        val baseLength = normalize(inputWords.firstOrNull().orEmpty()).length
+        val answers = resolveSeveralWordsList(rawInput, ::isPlusogramma).distinct()
+
+        val plusOne = answers.filter { normalize(it).length == baseLength + 1 }
+        val minusOne = answers.filter { normalize(it).length == baseLength - 1 }
+
+        return listOf(
+            PlusResult(title = "+1 буква", answers = plusOne),
+            PlusResult(title = "-1 буква", answers = minusOne)
+        )
     }
 
     private fun resolveBrukva(rawInput: String): String {

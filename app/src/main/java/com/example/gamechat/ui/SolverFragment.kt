@@ -420,6 +420,16 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                 SolverReply(sender = result.title, text = text)
             }
         }
+        if (mode.alias == "plus") {
+            return solverEngine.resolvePlusBreakdown(inputText).map { result ->
+                val text = if (result.answers.isEmpty()) {
+                    "ничего не найдено"
+                } else {
+                    result.answers.joinToString("\n")
+                }
+                SolverReply(sender = result.title, text = text)
+            }
+        }
         val raw = solverEngine.resolve(mode, inputText)
         return listOf(buildReplyForMode(mode, raw))
     }
