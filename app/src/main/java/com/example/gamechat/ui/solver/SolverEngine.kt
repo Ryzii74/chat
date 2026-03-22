@@ -69,7 +69,7 @@ class SolverEngine(
         val source = repository.wordsForText(input)
         val candidates = findAnagramCandidates(input, source)
             .distinct()
-            .take(60)
+            .take(PAGINATION_RESULTS_LIMIT)
         return if (candidates.isEmpty()) {
             "[Анаграмма]\nНичего не найдено."
         } else {
@@ -131,7 +131,7 @@ class SolverEngine(
                 val first = word.getOrNull(indexes[0]) ?: return@all false
                 indexes.all { word.getOrNull(it) == first }
             }
-        }.distinct().take(60)
+        }.distinct().take(PAGINATION_RESULTS_LIMIT)
 
         return if (answers.isEmpty()) {
             "По маске ничего не найдено."
@@ -156,7 +156,7 @@ class SolverEngine(
             answers.add(word.replace(match.groupValues[1], match.groupValues[1].uppercase(Locale.ROOT)))
         }
 
-        val limited = answers.distinct().take(60)
+        val limited = answers.distinct().take(PAGINATION_RESULTS_LIMIT)
         return if (limited.isEmpty()) {
             "По маске ничего не найдено."
         } else {
@@ -193,7 +193,7 @@ class SolverEngine(
             }
         }
 
-        val limited = pairs.take(120)
+        val limited = pairs.take(PAGINATION_RESULTS_LIMIT)
         return if (limited.isEmpty()) {
             "Ничего не найдено."
         } else {
@@ -260,7 +260,7 @@ class SolverEngine(
                 .map(::normalize)
                 .filter { isMetagramma(it, target) }
                 .distinct()
-                .take(80)
+                .take(PAGINATION_RESULTS_LIMIT)
                 .toList()
             return if (answers.isEmpty()) "Нет результатов" else "Найдено (${answers.size}): ${answers.joinToString(", ")}"
         }
@@ -285,7 +285,7 @@ class SolverEngine(
                 if (isMetagramma(a, b)) answers.add(formatter(a, b))
             }
         }
-        val unique = answers.distinct().take(120)
+        val unique = answers.distinct().take(PAGINATION_RESULTS_LIMIT)
         return if (unique.isEmpty()) "Нет результатов" else "Найдено (${unique.size}): ${unique.joinToString(", ")}"
     }
 
@@ -1128,7 +1128,7 @@ class SolverEngine(
                 .map(::normalize)
                 .filter { task(it, text) }
                 .distinct()
-                .take(200)
+                .take(PAGINATION_RESULTS_LIMIT)
                 .forEach { answers.add(it) }
             return answers
         }
@@ -1156,7 +1156,7 @@ class SolverEngine(
                 }
             }
         }
-        return answers.distinct().take(200)
+        return answers.distinct().take(PAGINATION_RESULTS_LIMIT)
     }
 
     private fun isGapoifika(text: String, title: String): Boolean {
@@ -1370,6 +1370,7 @@ class SolverEngine(
     )
 
     companion object {
+        private const val PAGINATION_RESULTS_LIMIT = 1000
         private val RegexSpecial = setOf('.', '+', '(', ')', '[', ']', '{', '}', '^', '$', '|', '\\')
     }
 }
