@@ -170,6 +170,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             SolverModes.byId(23),
             SolverModes.byId(4),
             SolverModes.byId(5),
+            SolverModes.byId(6),
             SolverModes.byId(7)
         )
 

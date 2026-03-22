@@ -57,4 +57,7 @@
     <item
         android:id="@+id/solverMode5"
         android:title="@string/solver_mode_5" />
+    <item
+        android:id="@+id/solverMode6"
+        android:title="@string/solver_mode_6" />
 </menu>

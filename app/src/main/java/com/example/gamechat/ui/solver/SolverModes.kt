@@ -34,7 +34,8 @@ object SolverModes {
         SolverMode(id = 20, alias = "gapoifika", title = "ГаПоИФиКа"),
         SolverMode(id = 11, alias = "plus", title = "Плюсограмма"),
         SolverMode(id = 4, alias = "books", title = "Книги"),
-        SolverMode(id = 5, alias = "film", title = "Фильмы")
+        SolverMode(id = 5, alias = "film", title = "Фильмы"),
+        SolverMode(id = 6, alias = "painting", title = "Картины")
     )
 
     fun all(): List<SolverMode> = modes
@@ -56,6 +57,8 @@ object SolverModes {
             "books" -> "books"
             "films" -> "film"
             "film" -> "film"
+            "painting" -> "painting"
+            "paintings" -> "painting"
             "plus" -> "plus"
             "anagramma2" -> "anagramma2"
             "maskword" -> "maskword"
