@@ -10,6 +10,11 @@ class SolverEngine(
         val answers: List<String>
     )
 
+    data class BrukvaResult(
+        val title: String,
+        val answers: List<String>
+    )
+
     fun resolve(mode: SolverMode, rawInput: String): String {
         val input = normalize(rawInput)
         if (input.isBlank()) return "Введите слово или шаблон."
@@ -326,7 +331,28 @@ class SolverEngine(
     }
 
     private fun resolveBrukva(rawInput: String): String {
-        return resolveSeveralWordsByLength(rawInput, ::isBrukva)
+        val results = resolveBrukvaBreakdown(rawInput)
+        return results.joinToString("\n\n") { result ->
+            if (result.answers.isEmpty()) {
+                "${result.title}\nНет результатов"
+            } else {
+                "${result.title}\n${result.answers.take(80).joinToString(" ")}"
+            }
+        }
+    }
+
+    fun resolveBrukvaBreakdown(rawInput: String): List<BrukvaResult> {
+        val inputWords = rawInput.trim().split("\\s+".toRegex()).filter { it.isNotBlank() }
+        val baseLength = normalize(inputWords.firstOrNull().orEmpty()).length
+        val answers = resolveSeveralWordsList(rawInput, ::isBrukva).distinct()
+
+        val plusOne = answers.filter { normalize(it).length == baseLength + 1 }
+        val minusOne = answers.filter { normalize(it).length == baseLength - 1 }
+
+        return listOf(
+            BrukvaResult(title = "+1 буква", answers = plusOne),
+            BrukvaResult(title = "-1 буква", answers = minusOne)
+        )
     }
 
     private fun resolveLogo(rawInput: String): String {
