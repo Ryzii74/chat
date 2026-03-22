@@ -614,12 +614,15 @@ class SolverEngine(
     }
 
     private fun resolveCaesar(input: String): String {
+        val dictSet = repository.wordsForText(input).asSequence()
+            .map(::normalize)
+            .toSet()
         val responses = mutableListOf<String>()
         for (i in 1..32) {
             val key = lettersRu.getOrNull(i)?.toString().orEmpty()
             if (key.isBlank()) continue
             val decoded = vigenereTransform(input, key, encrypt = false)
-            responses.add("$i: ${getWordsFromLine(decoded)}")
+            responses.add("$i: ${getWordsFromLine(decoded, dictSet)}")
         }
         return responses.joinToString("\n")
     }
@@ -1282,6 +1285,11 @@ class SolverEngine(
     private fun findWordsByMask(text: String, wordsSet: Set<String>? = null): List<String> {
         val dict = (wordsSet ?: repository.wordsForText(text).map(::normalize).toSet())
         if (text.isBlank()) return emptyList()
+        // Fast-path for exact words avoids full dictionary regex scan.
+        if (!text.contains('?')) {
+            val normalized = normalize(text)
+            return if (dict.contains(normalized)) listOf(normalized) else emptyList()
+        }
         val regex = Regex("^" + text.map { if (it == '?') "\\S" else Regex.escape(it.toString()) }.joinToString("") + "$")
         return dict.filter { regex.matches(it) }.take(50)
     }
