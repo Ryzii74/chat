@@ -244,7 +244,7 @@ class SolverEngine(
         val words = input.split("\\s+".toRegex()).filter { it.isNotBlank() }
         if (words.isEmpty()) return "Введите слово."
         if (words.size == 1) {
-            val associations = repository.associationsForWord(words[0]).take(30)
+            val associations = repository.associationsForWord(words[0]).take(PAGINATION_RESULTS_LIMIT)
             return if (associations.isEmpty()) {
                 "Ассоциации не найдены."
             } else {
@@ -254,7 +254,7 @@ class SolverEngine(
 
         val first = repository.associationsForWord(words[0]).toSet()
         val second = repository.associationsForWord(words[1]).toSet()
-        val common = first.intersect(second).sorted().take(30)
+        val common = first.intersect(second).sorted().take(PAGINATION_RESULTS_LIMIT)
         return if (common.isEmpty()) {
             "Общих ассоциаций не найдено."
         } else {
@@ -307,7 +307,7 @@ class SolverEngine(
             if (result.answers.isEmpty()) {
                 "${result.title}\nНет результатов"
             } else {
-                "${result.title}\n${result.answers.take(80).joinToString(" ")}"
+                "${result.title}\n${result.answers.take(PAGINATION_RESULTS_LIMIT).joinToString(" ")}"
             }
         }
     }
@@ -332,7 +332,7 @@ class SolverEngine(
             if (result.answers.isEmpty()) {
                 "${result.title}\nНет результатов"
             } else {
-                "${result.title}\n${result.answers.take(80).joinToString(" ")}"
+                "${result.title}\n${result.answers.take(PAGINATION_RESULTS_LIMIT).joinToString(" ")}"
             }
         }
     }
@@ -361,7 +361,7 @@ class SolverEngine(
             return "Нет результатов"
         }
         return nonEmpty.joinToString("\n\n") { result ->
-            "${result.title}\n${result.answers.take(80).joinToString(" ")}"
+            "${result.title}\n${result.answers.take(PAGINATION_RESULTS_LIMIT).joinToString(" ")}"
         }
     }
 
@@ -475,12 +475,12 @@ class SolverEngine(
         if (words.isEmpty()) return "Введите слово."
         return try {
             if (words.size == 1) {
-                val values = source(words[0]).distinct().take(120)
+                val values = source(words[0]).distinct().take(PAGINATION_RESULTS_LIMIT)
                 if (values.isEmpty()) "Нет результатов" else "Найдено (${values.size}): ${values.joinToString(", ")}"
             } else {
                 val first = source(words[0]).map(::normalize).toSet()
                 val second = source(words[1]).map(::normalize).toSet()
-                val equal = first.intersect(second).sorted().take(120)
+                val equal = first.intersect(second).sorted().take(PAGINATION_RESULTS_LIMIT)
                 if (equal.isEmpty()) "Нет результатов" else "Найдено (${equal.size}): ${equal.joinToString(", ")}"
             }
         } catch (_: Exception) {
@@ -537,7 +537,7 @@ class SolverEngine(
             .map(::normalize)
             .filter { isSubword(text, it) }
             .distinct()
-            .take(200)
+            .take(PAGINATION_RESULTS_LIMIT)
             .toList()
         return if (answers.isEmpty()) "Нет результатов" else answers.joinToString("\n")
     }
@@ -854,7 +854,7 @@ class SolverEngine(
         val reg = Regex("^$lettersPattern$")
         val wordsFromLetters = repository.wordsForText("hello")
             .filter { reg.matches(it.lowercase(Locale.ROOT)) }
-            .take(80)
+            .take(PAGINATION_RESULTS_LIMIT)
         val numbers = notes.joinToString(" ") { it.number.toString() }
         val wordRu = notes.joinToString("") { lettersRu[it.number - 1].toString() }
         val wordEn = notes.joinToString("") { lettersEn[it.number - 1].toString() }
@@ -893,7 +893,7 @@ class SolverEngine(
             }
         }
         dfs(trie)
-        val sorted = results.sortedWith(compareBy<String> { it.length }.thenBy { it }).take(200)
+        val sorted = results.sortedWith(compareBy<String> { it.length }.thenBy { it }).take(PAGINATION_RESULTS_LIMIT)
         return if (sorted.isEmpty()) {
             "Нет результатов"
         } else {
@@ -1122,7 +1122,7 @@ class SolverEngine(
         }
         val grouped = answers.groupBy { it.length }.toSortedMap()
         return grouped.entries.joinToString("\n\n") { (len, vals) ->
-            "$len\n${vals.take(80).joinToString(" ")}"
+            "$len\n${vals.take(PAGINATION_RESULTS_LIMIT).joinToString(" ")}"
         }
     }
 
