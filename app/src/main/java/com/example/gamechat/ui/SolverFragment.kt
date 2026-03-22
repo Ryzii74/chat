@@ -151,6 +151,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             menu.setOnMenuItemClickListener { item ->
                 val mode = when (item.itemId) {
                     R.id.solverMode1 -> SolverModes.byId(1)
+                    R.id.solverMode8 -> SolverModes.byId(8)
                     R.id.solverMode2 -> SolverModes.byId(2)
                     R.id.solverMode3 -> SolverModes.byId(3)
                     R.id.solverMode11 -> SolverModes.byId(11)

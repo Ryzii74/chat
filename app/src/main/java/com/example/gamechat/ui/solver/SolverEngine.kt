@@ -168,9 +168,9 @@ class SolverEngine(
         val target = input.replace(" ", "")
         if (target.isBlank()) return "Введите буквы для поиска пары слов."
         val lettersCount = countLetters(target)
-        val words = repository.wordsForText(target)
+        val wordsArray = repository.wordsForText(target)
 
-        val validWords = words.asSequence()
+        val validWords = wordsArray.asSequence()
             .filter { canForm(countLetters(it), lettersCount) }
             .distinct()
             .toList()
@@ -179,20 +179,17 @@ class SolverEngine(
             return "Ничего не найдено."
         }
 
-        val wordsBySignature = mutableMapOf<String, MutableList<String>>()
-        validWords.forEach { word ->
-            val signature = countsSignature(countLetters(word))
-            wordsBySignature.getOrPut(signature) { mutableListOf() }.add(word)
-        }
-
-        val pairs = linkedSetOf<String>()
-        validWords.forEach { word1 ->
-            val remaining = subtractCounts(lettersCount, countLetters(word1)) ?: return@forEach
-            val matches = wordsBySignature[countsSignature(remaining)].orEmpty()
-            matches.forEach matchesLoop@{ word2 ->
-                if (word1 == word2) return@matchesLoop
-                val (a, b) = if (word1 <= word2) word1 to word2 else word2 to word1
-                pairs.add("$a $b")
+        val pairs = mutableListOf<String>()
+        for (i in validWords.indices) {
+            val word1 = validWords[i]
+            val count1 = countLetters(word1)
+            val remaining = subtractCounts(lettersCount, count1) ?: continue
+            for (j in i + 1 until validWords.size) {
+                val word2 = validWords[j]
+                val count2 = countLetters(word2)
+                if (isEqualCount(remaining, count2)) {
+                    pairs.add("$word1 $word2")
+                }
             }
         }
 
@@ -983,10 +980,12 @@ class SolverEngine(
         return result
     }
 
-    private fun countsSignature(counts: Map<Char, Int>): String {
-        return counts.entries
-            .sortedBy { it.key }
-            .joinToString("|") { "${it.key}:${it.value}" }
+    private fun isEqualCount(count1: Map<Char, Int>, count2: Map<Char, Int>): Boolean {
+        if (count1.size != count2.size) return false
+        count1.forEach { (char, value) ->
+            if (count2[char] != value) return false
+        }
+        return true
     }
 
     private fun escapeForRegex(input: String): String {

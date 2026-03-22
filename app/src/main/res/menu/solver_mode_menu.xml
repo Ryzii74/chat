@@ -4,6 +4,9 @@
         android:id="@+id/solverMode1"
         android:title="@string/solver_mode_1" />
     <item
+        android:id="@+id/solverMode8"
+        android:title="@string/solver_mode_8" />
+    <item
         android:id="@+id/solverMode2"
         android:title="@string/solver_mode_2" />
     <item

@@ -9,6 +9,7 @@ data class SolverMode(
 object SolverModes {
     private val modes = listOf(
         SolverMode(id = 1, alias = "anagramma", title = "Анаграмма"),
+        SolverMode(id = 8, alias = "anagramma2", title = "2Анаграмма"),
         SolverMode(id = 2, alias = "association", title = "Ассоциации"),
         SolverMode(id = 36, alias = "dick", title = "Расчлененка"),
         SolverMode(id = 3, alias = "mask", title = "Маска"),
@@ -50,6 +51,7 @@ object SolverModes {
             "films" -> "film"
             "film" -> "film"
             "plus" -> "plus"
+            "anagramma2" -> "anagramma2"
             "meta" -> "meta"
             "brukva" -> "brukva"
             "logo" -> "logo"

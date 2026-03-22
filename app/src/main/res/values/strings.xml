@@ -47,7 +47,7 @@
     <string name="solver_mode_1">Анаграмма</string>
     <string name="solver_mode_2">Ассоциации</string>
     <string name="solver_mode_3">Маска</string>
-    <string name="solver_mode_8">Анаграмма из 2 слов</string>
+    <string name="solver_mode_8">2Анаграмма</string>
     <string name="solver_mode_9">Маска + слово</string>
     <string name="solver_mode_10">Словоген</string>
     <string name="solver_mode_11">Плюсограмма</string>
