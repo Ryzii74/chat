@@ -190,7 +190,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         }
 
         loadMoreButton.setOnClickListener {
-            // External button is deprecated. Pagination is now inside each message.
+            appendNextResultPage(loadMoreButton)
         }
 
         renderModeButton()
@@ -380,6 +380,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         )
         adapter.notifyItemChanged(index)
         saveSolverHistory()
+        view?.findViewById<Button>(R.id.solverLoadMoreButton)?.let(::updateLoadMoreButton)
         view?.let { scrollToBottom(it) }
     }
 
@@ -391,7 +392,11 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     }
 
     private fun appendNextResultPage(loadMoreButton: Button) {
-        // External button is deprecated. Pagination is now inside each message.
+        val messageId = findLatestPendingMessageId() ?: run {
+            updateLoadMoreButton(loadMoreButton)
+            return
+        }
+        appendNextResultPage(messageId)
         updateLoadMoreButton(loadMoreButton)
     }
 
@@ -406,7 +411,18 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
     }
 
     private fun updateLoadMoreButton(button: Button) {
-        button.visibility = View.GONE
+        val hasPending = findLatestPendingMessageId() != null
+        button.visibility = if (hasPending) View.VISIBLE else View.GONE
+    }
+
+    private fun findLatestPendingMessageId(): String? {
+        for (index in messages.indices.reversed()) {
+            val id = messages[index].id ?: continue
+            if (pendingLinesByMessageId[id]?.isNotEmpty() == true) {
+                return id
+            }
+        }
+        return null
     }
 
     private fun scrollToBottom(root: View) {
