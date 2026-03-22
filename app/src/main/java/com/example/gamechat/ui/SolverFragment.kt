@@ -12,7 +12,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.Toast
-import androidx.appcompat.widget.PopupMenu
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -149,38 +149,37 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             }.start()
         }
 
-        modeButton.setOnClickListener { anchor ->
-            val menu = PopupMenu(requireContext(), anchor)
-            menu.menuInflater.inflate(R.menu.solver_mode_menu, menu.menu)
-            menu.setOnMenuItemClickListener { item ->
-                val mode = when (item.itemId) {
-                    R.id.solverMode1 -> SolverModes.byId(1)
-                    R.id.solverMode8 -> SolverModes.byId(8)
-                    R.id.solverMode2 -> SolverModes.byId(2)
-                    R.id.solverMode3 -> SolverModes.byId(3)
-                    R.id.solverMode9 -> SolverModes.byId(9)
-                    R.id.solverMode11 -> SolverModes.byId(11)
-                    R.id.solverMode12 -> SolverModes.byId(12)
-                    R.id.solverMode13 -> SolverModes.byId(13)
-                    R.id.solverMode14 -> SolverModes.byId(14)
-                    R.id.solverMode15 -> SolverModes.byId(15)
-                    R.id.solverMode20 -> SolverModes.byId(20)
-                    R.id.solverMode16 -> SolverModes.byId(16)
-                    R.id.solverMode22 -> SolverModes.byId(22)
-                    R.id.solverMode23 -> SolverModes.byId(23)
-                    R.id.solverMode4 -> SolverModes.byId(4)
-                    R.id.solverMode5 -> SolverModes.byId(5)
-                    R.id.solverMode7 -> SolverModes.byId(7)
-                    else -> null
+        val selectableModes = listOfNotNull(
+            SolverModes.byId(1),
+            SolverModes.byId(8),
+            SolverModes.byId(2),
+            SolverModes.byId(3),
+            SolverModes.byId(9),
+            SolverModes.byId(11),
+            SolverModes.byId(12),
+            SolverModes.byId(13),
+            SolverModes.byId(14),
+            SolverModes.byId(15),
+            SolverModes.byId(20),
+            SolverModes.byId(16),
+            SolverModes.byId(22),
+            SolverModes.byId(23),
+            SolverModes.byId(4),
+            SolverModes.byId(5),
+            SolverModes.byId(7)
+        )
+
+        modeButton.setOnClickListener {
+            val titles = selectableModes.map { it.title }.toTypedArray()
+            val selectedIndex = selectableModes.indexOfFirst { it.alias == selectedMode.alias }
+            AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.menu_solver))
+                .setSingleChoiceItems(titles, selectedIndex) { dialog, which ->
+                    selectableModes.getOrNull(which)?.let(::switchMode)
+                    dialog.dismiss()
                 }
-                if (mode != null) {
-                    switchMode(mode)
-                    true
-                } else {
-                    false
-                }
-            }
-            menu.show()
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
         }
 
         sendButton.setOnClickListener {
