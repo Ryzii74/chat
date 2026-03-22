@@ -37,6 +37,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
         private const val RESULT_PAGE_SIZE = 50
         private const val LOAD_MORE_LABEL = "Показать еще 50"
         private const val LOAD_MORE_ID_PREFIX = "solver-loadmore-"
+        private const val NEXT_PAGE_DIVIDER = "[──────── Следующие 50 ────────]"
     }
 
     private data class SolverReply(
@@ -363,22 +364,17 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             pendingLinesByMessageId.remove(messageId)
         }
 
-        val index = messages.indexOfFirst { it.id == messageId }
+        val index = messages.indexOfLast { it.id == messageId }
         if (index < 0) return
-        val message = messages[index]
-        val plainCurrent = stripClickableMarkers(message.text)
-            .lines()
-            .map { it.trim() }
-            .filter { it.isNotBlank() && it != LOAD_MORE_LABEL }
-
-        val baseText = (plainCurrent + next).joinToString("\n")
-        messages[index] = message.copy(
-            text = makeAnswersClickable(baseText)
+        val sender = messages[index].senderName.orEmpty()
+        val pageText = "$NEXT_PAGE_DIVIDER\n${next.joinToString("\n")}"
+        addSystemMessage(
+            sender = sender,
+            text = pageText,
+            id = messageId
         )
-        adapter.notifyItemChanged(index)
-        saveSolverHistory()
         view?.findViewById<Button>(R.id.solverLoadMoreButton)?.let(::updateLoadMoreButton)
-        view?.let { scrollToBottom(it) }
+        view?.let { scrollToMessageTop(it, messages.lastIndex) }
     }
 
     private fun stripClickableMarkers(text: String): String {
@@ -459,6 +455,18 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
 
     private fun scrollToBottom(root: View) {
         root.findViewById<RecyclerView>(R.id.solverMessagesRecycler).scrollToPosition(messages.lastIndex)
+    }
+
+    private fun scrollToMessageTop(root: View, index: Int) {
+        val recycler = root.findViewById<RecyclerView>(R.id.solverMessagesRecycler)
+        val layoutManager = recycler.layoutManager as? LinearLayoutManager
+        if (layoutManager != null) {
+            recycler.post {
+                layoutManager.scrollToPositionWithOffset(index, 0)
+            }
+        } else {
+            recycler.scrollToPosition(index)
+        }
     }
 
     private fun formatNowTime(): String {
