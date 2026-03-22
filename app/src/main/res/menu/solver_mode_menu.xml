@@ -31,6 +31,9 @@
         android:id="@+id/solverMode20"
         android:title="@string/solver_mode_20" />
     <item
+        android:id="@+id/solverMode21"
+        android:title="@string/solver_mode_21" />
+    <item
         android:id="@+id/solverMode27"
         android:title="@string/solver_mode_27" />
     <item

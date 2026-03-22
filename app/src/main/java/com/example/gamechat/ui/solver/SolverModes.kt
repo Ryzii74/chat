@@ -28,6 +28,7 @@ object SolverModes {
         SolverMode(id = 30, alias = "bodo", title = "Бодо"),
         SolverMode(id = 31, alias = "binary", title = "Двоичка"),
         SolverMode(id = 34, alias = "tm", title = "Таблица Менделеева"),
+        SolverMode(id = 21, alias = "ss", title = "Системы счисления"),
         SolverMode(id = 17, alias = "roman", title = "Римские числа"),
         SolverMode(id = 27, alias = "caesar", title = "Шифр Цезаря"),
         SolverMode(id = 20, alias = "gapoifika", title = "ГаПоИФиКа"),
@@ -71,6 +72,7 @@ object SolverModes {
             "binary" -> "binary"
             "alphabet" -> "alphabet"
             "tm" -> "tm"
+            "ss" -> "ss"
             "roman" -> "roman"
             "caesar" -> "caesar"
             "gapoifika" -> "gapoifika"

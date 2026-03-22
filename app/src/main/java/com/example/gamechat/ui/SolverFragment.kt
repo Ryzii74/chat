@@ -162,6 +162,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             SolverModes.byId(14),
             SolverModes.byId(15),
             SolverModes.byId(20),
+            SolverModes.byId(21),
             SolverModes.byId(17),
             SolverModes.byId(27),
             SolverModes.byId(16),
@@ -450,6 +451,26 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
                 raw
             }
             return listOf(SolverReply(sender = mode.title, text = text))
+        }
+        if (mode.alias == "ss") {
+            val raw = solverEngine.resolve(mode, inputText).trim()
+            if (raw.equals("Нет результатов", ignoreCase = true) || raw.isBlank()) {
+                return listOf(SolverReply(sender = mode.title, text = "ничего не найдено"))
+            }
+            val lines = raw.lines()
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .map { line ->
+                    val idx = line.indexOf(':')
+                    if (idx <= 0 || idx >= line.lastIndex) {
+                        line
+                    } else {
+                        val label = line.substring(0, idx + 1).trim()
+                        val value = line.substring(idx + 1).trim()
+                        "$label [CLICKABLE]$value[/CLICKABLE]"
+                    }
+                }
+            return listOf(SolverReply(sender = mode.title, text = lines.joinToString("\n")))
         }
         if (mode.alias == "caesar") {
             val lines = solverEngine.resolveCaesarBreakdown(inputText).map { result ->
