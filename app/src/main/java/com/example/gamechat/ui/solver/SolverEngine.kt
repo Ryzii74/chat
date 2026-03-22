@@ -494,13 +494,13 @@ class SolverEngine(
         }
         val blocks = mutableListOf<String>()
         if (foundPaintings.isNotEmpty()) {
-            blocks.add("Картины\n${foundPaintings.take(120).joinToString("\n")}")
+            blocks.add("Картины\n${foundPaintings.joinToString("\n")}")
         }
         if (foundBooks.isNotEmpty()) {
-            blocks.add("Книги\n${foundBooks.take(120).joinToString("\n")}")
+            blocks.add("Книги\n${foundBooks.joinToString("\n")}")
         }
         if (foundFilms.isNotEmpty()) {
-            blocks.add("Фильмы\n${foundFilms.take(120).joinToString("\n")}")
+            blocks.add("Фильмы\n${foundFilms.joinToString("\n")}")
         }
         return blocks.joinToString("\n\n")
     }
