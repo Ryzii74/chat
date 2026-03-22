@@ -7,6 +7,7 @@ import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.InputMethodManager
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageButton
@@ -113,6 +114,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             if (modeCommand != null) {
                 switchMode(modeCommand)
                 input.text?.clear()
+                hideKeyboard(input)
                 return
             }
             messages.add(
@@ -127,6 +129,7 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
             adapter.notifyItemInserted(messages.lastIndex)
             scrollToBottom(root)
             input.text?.clear()
+            hideKeyboard(input)
             pendingLinesByMessageId.clear()
             updateLoadMoreButton(loadMoreButton)
             // Сохраняем историю после добавления пользовательского сообщения
@@ -460,6 +463,11 @@ class SolverFragment : Fragment(R.layout.fragment_solver) {
 
     private fun formatNowTime(): String {
         return SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+    }
+
+    private fun hideKeyboard(anchor: View) {
+        val imm = context?.getSystemService(InputMethodManager::class.java) ?: return
+        imm.hideSoftInputFromWindow(anchor.windowToken, 0)
     }
 
     private fun makeAnswersClickable(text: String): String {
